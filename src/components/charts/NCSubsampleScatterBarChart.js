@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Typography, Grid, CircularProgress, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { Typography, Grid, CircularProgress, Button } from '@mui/material';
 import { metricColor } from '../../utils/metricFormat';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
@@ -596,17 +596,6 @@ function ChartBlock({
     if (title && title.includes('HRC')) return hrcSummary || null;
     return null;
   }, [title, hraSummary, hrcSummary]);
-
-  const [popupOpen, setPopupOpen] = useState(false);
-  const [popupData, setPopupData] = useState([]);
-  const [popupTitle, setPopupTitle] = useState('');
-
-  const handleOpenPopup = (dataset, title) => {
-    setPopupData(dataset);
-    setPopupTitle(title);
-    setPopupOpen(true);
-  };
-  const handleClosePopup = () => setPopupOpen(false);
 
   // loading bar state
   const [progress, setProgress] = React.useState(0);
@@ -1472,83 +1461,6 @@ function ChartBlock({
         </Grid>
       </Grid>
 
-      {/* Popup 展示所有数据 */}
-      {popupOpen && (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            bgcolor: 'rgba(0,0,0,0.25)',
-            zIndex: 9998,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onClick={handleClosePopup}
-        >
-          <Box
-            sx={{
-              position: 'relative',
-              width: '75vw',
-              maxHeight: '80vh',
-              bgcolor: 'background.paper',
-              boxShadow: 24,
-              borderRadius: 4,
-              zIndex: 9999,
-              p: 4,
-              overflow: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>{popupTitle}</Typography>
-              <Button variant="outlined" sx={{ fontSize: 13, px: 3, py: 1 }} onClick={handleClosePopup}>Close</Button>
-            </Box>
-            {/* MUI Table with Ranking */}
-            <Box sx={{ overflowX: 'auto' }}>
-              <TableContainer component={Paper} sx={{ maxHeight: '60vh' }}>
-                <Table stickyHeader size="small" sx={{ minWidth: 700, fontSize: 15 }}>
-                  <TableHead>
-                    <TableRow sx={{ background: '#1a237e' }}>
-                      <TableCell sx={{ fontWeight: 'bold', background: '#1a237e', color: 'white', fontSize: 15 }}></TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', background: '#1a237e', color: 'white', fontSize: 15 }}>LotNo</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', background: '#1a237e', color: 'white', fontSize: 15 }}>SubSampleNo</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', background: '#1a237e', color: 'white', fontSize: 15 }}>Carburizing Furnace</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', background: '#1a237e', color: 'white', fontSize: 15 }}>Tempering Furnace</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', background: '#1a237e', color: 'white', fontSize: 15 }}>MeasValue</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', background: '#1a237e', color: 'white', fontSize: 15 }}>MeasDate</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {popupData && popupData.length > 0 ? popupData.map((item, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell sx={{ fontSize: 15 }}>{idx + 1}</TableCell>
-                        <TableCell sx={{ fontSize: 15 }}>{item.LotNo ?? '-'}</TableCell>
-                        <TableCell sx={{ fontSize: 15 }}>{item.SubSampleNo ?? '-'}</TableCell>
-                        <TableCell sx={{ fontSize: 15 }}>{item.CarbonizingFurnace ?? '-'}</TableCell>
-                        <TableCell sx={{ fontSize: 15 }}>{item.TemperingFurnace ?? '-'}</TableCell>
-                        <TableCell sx={{ fontSize: 15 }}>{item.MeasValue ?? '-'}</TableCell>
-                        <TableCell sx={{ fontSize: 15 }}>{dayjs(item.MeasDate).format('MMM DD, YYYY') ?? '-'}</TableCell>
-                      </TableRow>
-                    )) : (
-                      <TableRow>
-                        <TableCell colSpan={7} align="center" sx={{ py: 3, fontSize: 15 }}>
-                          No data
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          </Box>
-        </Box>
-      )}
     </Box>
   );
 }

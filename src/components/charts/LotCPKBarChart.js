@@ -504,7 +504,6 @@ const LotCPKBarChart = () => {
     return labelSet;
   }, [dailyDatasetsFilled.xLabels]);
 
-  const monthlyWidth = Math.max(1000, monthlyDatasetsFilled.xLabels.length * 130);
   // Past 14 months the x-axis ticks and the on-top total labels are stood up
   // vertically so none are hidden or overlapping.
   const monthlyManyPoints = monthlyDatasetsFilled.xLabels.length > 14;
