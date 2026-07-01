@@ -21,14 +21,19 @@ import {
   MenuItem,
   Divider,
   TextField,
-  Popover,
-  InputAdornment,
   Tooltip,
-  Slider
+  Slider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Autocomplete,
+  Chip,
+  Badge
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import AssessmentIcon from '@mui/icons-material/Assessment';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import FormatSizeIcon from '@mui/icons-material/FormatSize';
@@ -120,10 +125,8 @@ const MonthlyHistoricalOverallLots = () => {
   const [orderBy, setOrderBy] = useState(undefined);
   const [order, setOrder] = useState('asc');
   // filters本地和context同步，Month统一为YYYY-MM
-  // 月份列过滤相关
+  // 月份列过滤相关（现由 filter bar 的 "Value Filter" 模态框驱动）
   const [monthRangeFilters, setMonthRangeFilters] = useState({}); // { '202509': { min: 0.99, max: 1.00, exactValue: null } }
-  const [rangePopoverAnchor, setRangePopoverAnchor] = useState(null);
-  const [selectedMonthCol, setSelectedMonthCol] = useState(null);
   const [allRawMonths, setAllRawMonths] = useState([]);  // 不受月份筛选影响的完整月份列表
 
   // 全屏 (fullscreen) — 使用浏览器 Fullscreen API 将整个页面容器全屏显示
@@ -279,66 +282,53 @@ const MonthlyHistoricalOverallLots = () => {
     setOrderBy(property);
   };
 
-  // 月份列过滤菜单处理
-  const handleMonthFilterClick = (event, monthCol) => {
-    setRangePopoverAnchor(event.currentTarget);
-    setSelectedMonthCol(monthCol);
-  };
-
-  const handleRangePopoverClose = () => {
-    setRangePopoverAnchor(null);
-    setSelectedMonthCol(null);
-  };
-
-  const rangePopoverOpen = Boolean(rangePopoverAnchor);
-
-  // 处理范围过滤变化（实时应用）
-  const handleRangeFilterChange = (field, value) => {
-    if (!selectedMonthCol) return;
-    
-    const currentFilter = monthRangeFilters[selectedMonthCol] || { min: '', max: '', exactValue: null };
-    const newFilter = { ...currentFilter, [field]: value };
-    
-    setMonthRangeFilters(prev => ({
-      ...prev,
-      [selectedMonthCol]: newFilter
-    }));
-    
-    // console.log(`【DEBUG】Range filter updated for ${selectedMonthCol}:`, newFilter);
-  };
-
-  // 处理dropdown选项点击（设置exactValue）
-  const handleExactValueSelect = (value) => {
-    if (!selectedMonthCol) return;
-    
-    const currentFilter = monthRangeFilters[selectedMonthCol] || { min: '', max: '', exactValue: null };
-    const newExactValue = currentFilter.exactValue === value ? null : value; // 再点一次取消
-    
-    setMonthRangeFilters(prev => ({
-      ...prev,
-      [selectedMonthCol]: {
-        ...prev[selectedMonthCol],
-        exactValue: newExactValue,
-        min: '', // 清除manual range
-        max: ''
-      }
-    }));
-  };
-
-  // 清除某个月份的过滤（只清除当前月份）
-  const handleClearRangeFilter = () => {
-    if (!selectedMonthCol) return;
-    
-    setMonthRangeFilters(prev => {
-      const newFilters = { ...prev };
-      delete newFilters[selectedMonthCol];
-      return newFilters;
-    });
-  };
-
   // 清除所有月份的过滤
   const handleClearAllFilters = () => {
     setMonthRangeFilters({});
+  };
+
+  // ===== Filter-bar month/value modal =====
+  // A single control in the filter bar that opens a modal to pick a month
+  // (year + month) and set a min/max range — writes to the same monthRangeFilters
+  // that the per-column funnel uses, so the table reacts identically.
+  const [monthValueModalOpen, setMonthValueModalOpen] = useState(false);
+  const [modalMonth, setModalMonth] = useState('');
+  const [modalMin, setModalMin] = useState('');
+  const [modalMax, setModalMax] = useState('');
+
+  const openMonthValueModal = () => setMonthValueModalOpen(true);
+  const closeMonthValueModal = () => setMonthValueModalOpen(false);
+
+  // Picking a month prefills min/max from any existing filter on that month.
+  const handleModalMonthChange = (month) => {
+    setModalMonth(month || '');
+    const existing = month ? monthRangeFilters[month] : null;
+    setModalMin(existing?.min ?? '');
+    setModalMax(existing?.max ?? '');
+  };
+
+  const handleApplyMonthValueFilter = () => {
+    if (!modalMonth) return;
+    const noMin = modalMin === '' || modalMin === null || modalMin === undefined;
+    const noMax = modalMax === '' || modalMax === null || modalMax === undefined;
+    setMonthRangeFilters(prev => {
+      const next = { ...prev };
+      if (noMin && noMax) {
+        delete next[modalMonth]; // nothing set → clear this month
+      } else {
+        next[modalMonth] = { min: modalMin, max: modalMax, exactValue: null };
+      }
+      return next;
+    });
+  };
+
+  const handleRemoveMonthValueFilter = (month) => {
+    setMonthRangeFilters(prev => {
+      const next = { ...prev };
+      delete next[month];
+      return next;
+    });
+    if (month === modalMonth) { setModalMin(''); setModalMax(''); }
   };
 
   // 检查值是否在范围内（不包括dash）
@@ -424,6 +414,20 @@ const MonthlyHistoricalOverallLots = () => {
 
     return [...baseHeaders, ...monthHeaders, 'Analysis'];
   }, [filters.StartMonth, filters.EndMonth]);
+
+  // Visible month columns (6-digit keys) — the options for the month/value modal.
+  const monthHeaderKeys = useMemo(
+    () => tableHeaders.filter((h) => /^\d{6}$/.test(h)),
+    [tableHeaders]
+  );
+
+  // Active per-month value filters (min/max set) — drives the badge + chips.
+  const activeMonthValueFilters = useMemo(
+    () => Object.entries(monthRangeFilters).filter(([, f]) =>
+      f && ((f.min !== '' && f.min != null) || (f.max !== '' && f.max != null) || (f.exactValue != null))
+    ),
+    [monthRangeFilters]
+  );
 
   // Ensure every row contains every visible month column.
   // Missing month values are normalized to "-" for stable rendering/export/filtering.
@@ -628,6 +632,85 @@ const MonthlyHistoricalOverallLots = () => {
         setFilters={setFilters}
         onFilterUpdate={setFilteredData}
         monthOptions={allRawMonths}
+        bottomRow={
+          <>
+            <Tooltip title="Filter cell values by month (min / max)">
+              <Badge badgeContent={activeMonthValueFilters.length} color="primary">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<FilterAltIcon fontSize="small" />}
+                  onClick={openMonthValueModal}
+                  sx={{
+                    textTransform: 'none', whiteSpace: 'nowrap',
+                    borderColor: activeMonthValueFilters.length ? 'primary.main' : 'divider',
+                    color: activeMonthValueFilters.length ? 'primary.main' : 'text.secondary',
+                  }}
+                >
+                  Value Filter
+                </Button>
+              </Badge>
+            </Tooltip>
+            <Tooltip title="Download data (CSV)">
+              <span>
+                <CsvExportButton
+                  data={filledFilteredData}
+                  headers={tableHeaders}
+                  generalInfo={[
+                    { label: 'Report', value: 'Historical Monthly Measurement Table' },
+                    { label: 'Dept', value: filters.Dept || '' },
+                    { label: 'MachineId', value: filters.MachineId || '' },
+                    { label: 'MaterialDesc', value: filters.MaterialDesc || '' },
+                    { label: 'DimensionDesc', value: filters.DimensionDesc || '' },
+                    { label: 'CAT', value: Array.isArray(filters.CAT) ? filters.CAT.join(', ') : (filters.CAT || '') },
+                    { label: 'Period', value: [filters.StartMonth, filters.EndMonth].filter(Boolean).join(' – ') },
+                  ]}
+                  filename={buildExportFilename(filters.MaterialDesc, [filters.StartMonth, filters.EndMonth].filter(Boolean).join('-'), 'Historical_Data')}
+                  sx={{ minWidth: 0, px: 1.25 }}
+                >
+                  <DownloadIcon fontSize="small" />
+                </CsvExportButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Full screen">
+              <IconButton
+                onClick={toggleFullscreen}
+                size="small"
+                sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, color: 'primary.main' }}
+              >
+                <FullscreenIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Adjust table font size">
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1, minWidth: 180 }}>
+                <FormatSizeIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                <Slider
+                  value={tableFontSize}
+                  min={8}
+                  max={18}
+                  step={1}
+                  size="small"
+                  valueLabelDisplay="auto"
+                  onChange={(_, v) => setTableFontSize(v)}
+                  sx={{ width: 120 }}
+                />
+                <Typography sx={{ fontSize: 12, color: 'text.secondary', width: 34, textAlign: 'right' }}>
+                  {tableFontSize}px
+                </Typography>
+              </Box>
+            </Tooltip>
+            <TablePagination
+              rowsPerPageOptions={[100, 500, 1000]}
+              component="div"
+              count={sortedFilteredData.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              sx={{ ml: 'auto' }}
+            />
+          </>
+        }
         leading={
           <>
             <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.6, alignSelf: 'center', mr: 0.5 }}>
@@ -654,177 +737,84 @@ const MonthlyHistoricalOverallLots = () => {
         }
       />
       )}
+
+      {/* Month / value filter modal (opened from the "Value Filter" button in the filter bar) */}
+      <Dialog open={monthValueModalOpen} onClose={closeMonthValueModal} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Filter Values by Month</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            Select a month, then set a minimum and/or maximum. Only cells in that month whose value
+            falls within the range are kept; others are hidden.
+          </Typography>
+          <Autocomplete
+            options={monthHeaderKeys}
+            value={modalMonth || null}
+            onChange={(e, v) => handleModalMonthChange(v)}
+            getOptionLabel={(o) => formatMonthCol(o)}
+            isOptionEqualToValue={(o, v) => o === v}
+            renderInput={(params) => <TextField {...params} label="Month" size="small" />}
+            ListboxProps={{ style: { maxHeight: 260 } }}
+            sx={{ mb: 2 }}
+          />
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              label="Min" type="number" size="small" fullWidth
+              value={modalMin} onChange={(e) => setModalMin(e.target.value)}
+              inputProps={{ step: '0.0001' }} disabled={!modalMonth}
+            />
+            <TextField
+              label="Max" type="number" size="small" fullWidth
+              value={modalMax} onChange={(e) => setModalMax(e.target.value)}
+              inputProps={{ step: '0.0001' }} disabled={!modalMonth}
+            />
+          </Box>
+
+          {activeMonthValueFilters.length > 0 && (
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                Active month filters
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {activeMonthValueFilters.map(([month, f]) => {
+                  const parts = [];
+                  if (f.min !== '' && f.min != null) parts.push(`≥ ${f.min}`);
+                  if (f.max !== '' && f.max != null) parts.push(`≤ ${f.max}`);
+                  return (
+                    <Chip
+                      key={month}
+                      size="small"
+                      label={`${formatMonthCol(month)}: ${parts.join(', ')}`}
+                      onClick={() => handleModalMonthChange(month)}
+                      onDelete={() => handleRemoveMonthValueFilter(month)}
+                    />
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button
+            onClick={handleClearAllFilters}
+            color="inherit"
+            disabled={activeMonthValueFilters.length === 0}
+          >
+            Clear All
+          </Button>
+          <Box sx={{ flex: 1 }} />
+          <Button onClick={closeMonthValueModal} color="inherit">Close</Button>
+          <Button variant="contained" onClick={handleApplyMonthValueFilter} disabled={!modalMonth}>
+            Apply
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center' }}>
           <CircularProgress disableShrink color="primary" sx={{ height: '100vh' }} />
         </Box>
       ) : (
         <>
-          {/* 范围过滤 Popover */}
-          <Popover
-            open={rangePopoverOpen}
-            anchorEl={rangePopoverAnchor}
-            onClose={handleRangePopoverClose}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'right',
-            }}
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'right',
-            }}
-          >
-            <Box sx={{ p: 2, minWidth: 280 }}>
-              {selectedMonthCol && (
-                <>
-                  {/* Range Input Fields */}
-                  <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                    <TextField
-                      label="Min"
-                      size="small"
-                      type="number"
-                      inputProps={{ step: '0.0001' }}
-                      value={monthRangeFilters[selectedMonthCol]?.min ?? ''}
-                      onChange={(e) => handleRangeFilterChange('min', e.target.value)}
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">&ge;</InputAdornment>
-                      }}
-                      sx={{ flex: 1 }}
-                    />
-                    <TextField
-                      label="Max"
-                      size="small"
-                      type="number"
-                      inputProps={{ step: '0.0001' }}
-                      value={monthRangeFilters[selectedMonthCol]?.max ?? ''}
-                      onChange={(e) => handleRangeFilterChange('max', e.target.value)}
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">&le;</InputAdornment>
-                      }}
-                      sx={{ flex: 1 }}
-                    />
-                  </Box>
-
-                  {/* Options List */}
-                  <Box sx={{
-                    maxHeight: 250,
-                    overflowY: 'auto',
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}>
-                    {(() => {
-                      // 联动逻辑：从sortedFilteredData开始，应用其他month的过滤，得到dataForOptions
-                      let dataForOptions = sortedFilteredData;
-                      
-                      // 应用monthRangeFilters中的其他month过滤
-                      for (const [monthCol, filter] of Object.entries(monthRangeFilters)) {
-                        if (monthCol === selectedMonthCol) continue; // 跳过当前month
-                        
-                        dataForOptions = dataForOptions.filter(row => {
-                          // exactValue过滤
-                          if (filter.exactValue !== null && filter.exactValue !== undefined) {
-                            const value = row[monthCol];
-                            const numVal = parseFloat(value);
-                            const exactNum = parseFloat(filter.exactValue);
-                            
-                            if (filter.exactValue === '-') {
-                              return !isFinite(numVal); // 选的是"-"，则row必须是dash
-                            } else {
-                              if (!isFinite(numVal)) return false;
-                              return Math.abs(numVal - exactNum) <= 0.00001;
-                            }
-                          }
-                          
-                          // range过滤
-                          if (filter.min !== '' || filter.max !== '') {
-                            const value = row[monthCol];
-                            const numVal = parseFloat(value);
-                            if (!isFinite(numVal)) return false; // dash不显示
-                            
-                            const minNum = filter.min !== '' ? parseFloat(filter.min) : -Infinity;
-                            const maxNum = filter.max !== '' ? parseFloat(filter.max) : Infinity;
-                            
-                            return numVal >= minNum && numVal <= maxNum;
-                          }
-                          
-                          return true;
-                        });
-                      }
-
-                      // 从dataForOptions中提取selectedMonthCol的所有值
-                      const monthValues = dataForOptions
-                        .map(row => {
-                          const val = row[selectedMonthCol];
-                          const numVal = parseFloat(val);
-                          return isFinite(numVal) ? numVal.toFixed(4) : null;
-                        })
-                        .filter(v => v !== null);
-
-                      // 收集所有出现过的值
-                      let options = Array.from(new Set(monthValues)).sort((a, b) => parseFloat(a) - parseFloat(b));
-
-                      // 检查是否有dash值
-                      const hasDash = dataForOptions.some(row => {
-                        const val = row[selectedMonthCol];
-                        return val === ' - ' || val === '-' || val === null || val === undefined || val === '';
-                      });
-
-                      // 在最前面加"-"选项
-                      if (hasDash) {
-                        options = ['-', ...options];
-                      }
-
-                      if (options.length === 0) {
-                        return (
-                          <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-                            No options available
-                          </Typography>
-                        );
-                      }
-
-                      const currentExactValue = monthRangeFilters[selectedMonthCol]?.exactValue;
-
-                      return options.map(option => (
-                        <Box
-                          key={option}
-                          sx={{
-                            cursor: 'pointer',
-                            px: 2,
-                            py: 0.8,
-                            backgroundColor: currentExactValue === option ? '#1976d2' : 'transparent',
-                            color: currentExactValue === option ? 'white' : 'inherit',
-                            '&:hover': {
-                              background: currentExactValue === option ? '#1565c0' : '#333'
-                            },
-                          }}
-                          onClick={() => handleExactValueSelect(option)}
-                        >
-                          {option}
-                        </Box>
-                      ));
-                    })()}
-                  </Box>
-
-                  {/* Clear Button */}
-                  <Box
-                    sx={{
-                      cursor: 'pointer',
-                      mt: 2,
-                      px: 2,
-                      py: 0.8,
-                      color: 'white',
-                      background: 'black',
-                      fontSize: '0.85rem',
-                      '&:hover': { background: '#333' },
-                    }}
-                    onClick={handleClearRangeFilter}
-                  >
-                    Clear
-                  </Box>
-                </>
-              )}
-            </Box>
-          </Popover>
           {isFullscreen && (
             <Tooltip title="Exit full screen">
               <IconButton
@@ -846,75 +836,6 @@ const MonthlyHistoricalOverallLots = () => {
                 <FullscreenExitIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-          )}
-          {!isFullscreen && (
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <Tooltip title="Download data (CSV)">
-              <span>
-                <CsvExportButton
-                  data={filledFilteredData}
-                  headers={tableHeaders}
-                  generalInfo={[
-                    { label: 'Report', value: 'Historical Monthly Measurement Table' },
-                    { label: 'Dept', value: filters.Dept || '' },
-                    { label: 'MachineId', value: filters.MachineId || '' },
-                    { label: 'MaterialDesc', value: filters.MaterialDesc || '' },
-                    { label: 'DimensionDesc', value: filters.DimensionDesc || '' },
-                    { label: 'CAT', value: Array.isArray(filters.CAT) ? filters.CAT.join(', ') : (filters.CAT || '') },
-                    { label: 'Period', value: [filters.StartMonth, filters.EndMonth].filter(Boolean).join(' – ') },
-                  ]}
-                  filename={buildExportFilename(filters.MaterialDesc, [filters.StartMonth, filters.EndMonth].filter(Boolean).join('-'), 'Historical_Data')}
-                  sx={{ minWidth: 0, px: 1.25, mr: 1 }}
-                >
-                  <DownloadIcon fontSize="small" />
-                </CsvExportButton>
-              </span>
-            </Tooltip>
-            <Tooltip title={isFullscreen ? 'Exit full screen' : 'Full screen'}>
-              <IconButton
-                onClick={toggleFullscreen}
-                size="small"
-                sx={{
-                  mr: 1,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 1,
-                  color: 'primary.main',
-                }}
-              >
-                {isFullscreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
-              </IconButton>
-            </Tooltip>
-            {/* 字号缩放 slider — 拖动可缩小表格字号和列宽，减少横向滚动 */}
-            <Tooltip title="Adjust table font size">
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1, minWidth: 200 }}>
-                <FormatSizeIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                <Slider
-                  value={tableFontSize}
-                  min={8}
-                  max={18}
-                  step={1}
-                  size="small"
-                  valueLabelDisplay="auto"
-                  onChange={(_, v) => setTableFontSize(v)}
-                  sx={{ width: 130 }}
-                />
-                <Typography sx={{ fontSize: 12, color: 'text.secondary', width: 34, textAlign: 'right' }}>
-                  {tableFontSize}px
-                </Typography>
-              </Box>
-            </Tooltip>
-            <TablePagination
-              rowsPerPageOptions={[100, 500, 1000]}
-              component="div"
-              count={sortedFilteredData.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              sx={{ flex: 1 }}
-            />
-          </Box>
           )}
           <TableContainer
             component={Paper}
@@ -995,16 +916,6 @@ const MonthlyHistoricalOverallLots = () => {
                             >
                               {displayName}
                             </TableSortLabel>
-                          )}
-                          {isMonthCol && !isFullscreen && (
-                            <IconButton
-                              size="small"
-                              onClick={(e) => handleMonthFilterClick(e, header)}
-                              sx={{ ml: 0, p: 0, flexShrink: 0 }}
-                              title={`Filter ${displayName}`}
-                            >
-                              <FilterListIcon sx={{ fontSize: Math.max(11, tableFontSize + 2) }} />
-                            </IconButton>
                           )}
                         </Box>
                       </TableCell>

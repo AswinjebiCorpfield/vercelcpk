@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { BarChart } from '@mui/x-charts/BarChart';
 import axios from 'axios';
-import { Box, Card, CardContent, CircularProgress, Grid, Typography, TextField, Button, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination } from '@mui/material';
+import { Box, Card, CardContent, CircularProgress, Grid, Typography, TextField, Button, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, TableSortLabel, InputAdornment } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import Autocomplete from '@mui/material/Autocomplete';
 import './NCLotRankBar.css';
 import { useValue } from '../../context/ContextProvider';
@@ -80,12 +81,40 @@ const deriveFurnaces = (material, pool) => {
     return Array.from(new Set(picks)).join(', ');
 };
 
+// Column config for the Material Description Summary table. `field` is the sort key
+// (null = not sortable — action-button columns).
+const MATERIAL_COLUMNS = [
+    { label: 'Material Description', field: 'MaterialDesc', numeric: false },
+    { label: 'Carburizing Furnace', field: '__tvc', numeric: false },
+    { label: 'Tempering Furnace', field: '__tat', numeric: false },
+    { label: 'Total (Lots)', field: 'Total_Count', numeric: true },
+    { label: 'Ppk < 1 (Lots)', field: 'PPK_NC_Count', numeric: true },
+    { label: 'Ppk < 1 %', field: 'PPK_NC_Percentage', numeric: true },
+    { label: 'HRA / HRC Analysis', field: null },
+    { label: 'Historical Analysis', field: null },
+];
+
+// Sort value for a row given a column field (handles derived furnace columns).
+const materialSortValue = (row, field) => {
+    switch (field) {
+        case '__tvc': return deriveFurnaces(row.MaterialDesc, TVC_POOL) || '';
+        case '__tat': return deriveFurnaces(row.MaterialDesc, TAT_POOL) || '';
+        case 'Total_Count': return Number(row.Total_Count) || 0;
+        case 'PPK_NC_Count': return Number(row.PPK_NC_Count) || 0;
+        case 'PPK_NC_Percentage': return Number(row.PPK_NC_Percentage) || 0;
+        default: return (row.MaterialDesc || '').toLowerCase();
+    }
+};
+
 const NCLotRankBar = () => {
     const navigate = useNavigate();
     const [machineNCData, setMachineNCData] = useState([]);
     const [materialNCData, setMaterialNCData] = useState([]);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [search, setSearch] = useState('');
+    const [order, setOrder] = useState('desc');
+    const [orderBy, setOrderBy] = useState('PPK_NC_Count');
     useEffect(() => { setPage(0); }, [materialNCData]);
     const [tvcNCData, setTvcNCData] = useState([]);
     const [tatNCData, setTatNCData] = useState([]);
@@ -185,6 +214,41 @@ useEffect(() => {
     if (!filters.StartMonth) return allMonthsCombined;
     return allMonthsCombined.filter(m => m >= filters.StartMonth);
   }, [allMonthsCombined, filters.StartMonth]);
+
+  // Material summary: search filter + column sort applied before pagination.
+  const processedMaterialData = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let rows = materialNCData;
+    if (q) {
+      rows = rows.filter(r => {
+        const tvc = deriveFurnaces(r.MaterialDesc, TVC_POOL) || '';
+        const tat = deriveFurnaces(r.MaterialDesc, TAT_POOL) || '';
+        return (r.MaterialDesc || '').toLowerCase().includes(q)
+          || tvc.toLowerCase().includes(q)
+          || tat.toLowerCase().includes(q);
+      });
+    }
+    const sorted = [...rows].sort((a, b) => {
+      const va = materialSortValue(a, orderBy);
+      const vb = materialSortValue(b, orderBy);
+      if (va < vb) return order === 'asc' ? -1 : 1;
+      if (va > vb) return order === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [materialNCData, search, order, orderBy]);
+
+  const handleSort = (field) => {
+    if (!field) return;
+    if (orderBy === field) {
+      setOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setOrderBy(field);
+      // Text columns default to A→Z, numeric columns to high→low.
+      setOrder(field === 'MaterialDesc' || field === '__tvc' || field === '__tat' ? 'asc' : 'desc');
+    }
+    setPage(0);
+  };
 
     // 获取图表数据
     useEffect(() => {
@@ -339,6 +403,7 @@ useEffect(() => {
                                             variant="outlined"
                                             sx={{ minWidth: 160, flex: '1 1 160px' }}
                                             placeholder={isCAT ? 'Select CAT' : 'All'}
+                                            InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
                                         />
                                     )}
                                     getOptionLabel={(option) => option === '' ? '' : option}
@@ -368,6 +433,7 @@ useEffect(() => {
                             variant="outlined"
                             sx={{ minWidth: 160, flex: '1 1 160px' }}
                             placeholder="All"
+                            InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
                         />
                     )}
                     getOptionLabel={option => formatMonthYear(option)}
@@ -401,6 +467,7 @@ useEffect(() => {
                             variant="outlined"
                             sx={{ minWidth: 160, flex: '1 1 160px' }}
                             placeholder="All"
+                            InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
                         />
                     )}
                     getOptionLabel={option => formatMonthYear(option)}
@@ -451,8 +518,8 @@ useEffect(() => {
                                     <Typography sx={{ fontSize: 15, color: 'grey.600', py: 6, textAlign: 'center' }}>No Result</Typography>
                                 ) : (
                                     <BarChart
-                                        height={430}
-                                        margin={{ left: 54, right: 20, top: 16, bottom: 150 }}
+                                        height={460}
+                                        margin={{ left: 54, right: 20, top: 16, bottom: 185 }}
                                         xAxis={[{
                                             data: materialNCData.slice(0, 10).map(r => (r.MaterialDesc || '').split(' ').join('\n')),
                                             scaleType: 'band',
@@ -465,7 +532,7 @@ useEffect(() => {
                                             id: 'kfPpkLt1',
                                             color: '#26C6DA',
                                         }]}
-                                        slotProps={{ legend: { labelStyle: { fontSize: 13 } } }}
+                                        slotProps={{ legend: { labelStyle: { fontSize: 13 }, position: { vertical: 'bottom', horizontal: 'middle' }, direction: 'row' } }}
                                         barLabel={({ value }) => (value ? String(value) : '')}
                                         onItemClick={(event, d) => {
                                             const row = materialNCData[d.dataIndex];
@@ -477,20 +544,51 @@ useEffect(() => {
 
                             {/* KF2 — Summary matrix with two drill-down actions */}
                             <Card sx={{ p: 3, backgroundColor: 'background.paper' }}>
-                                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                                    Material Description Summary
-                                </Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                        Material Description Summary
+                                    </Typography>
+                                    <TextField
+                                        size="small"
+                                        placeholder="Search material or furnace…"
+                                        value={search}
+                                        onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                                        sx={{ minWidth: 260 }}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                    />
+                                </Box>
                                 <TableContainer component={Box} sx={{ borderRadius: 1, overflow: 'auto' }}>
                                     <Table size="small" sx={{ '& td, & th': { borderColor: 'divider' } }}>
                                         <TableHead>
                                             <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                                                {['Material Description', 'Carburizing Furnace', 'Tempering Furnace', 'Total (Lots)', 'Ppk < 1 (Lots)', 'Ppk < 1 %', 'HRA / HRC Analysis', 'Historical Analysis'].map(h => (
-                                                    <TableCell key={h} sx={{ color: 'text.secondary', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>{h}</TableCell>
+                                                {MATERIAL_COLUMNS.map(col => (
+                                                    <TableCell
+                                                        key={col.label}
+                                                        align={col.numeric ? 'left' : 'left'}
+                                                        sortDirection={orderBy === col.field ? order : false}
+                                                        sx={{ color: 'text.secondary', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}
+                                                    >
+                                                        {col.field ? (
+                                                            <TableSortLabel
+                                                                active={orderBy === col.field}
+                                                                direction={orderBy === col.field ? order : 'asc'}
+                                                                onClick={() => handleSort(col.field)}
+                                                            >
+                                                                {col.label}
+                                                            </TableSortLabel>
+                                                        ) : col.label}
+                                                    </TableCell>
                                                 ))}
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
-                                            {materialNCData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, i) => {
+                                            {processedMaterialData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, i) => {
                                                 const pct = Number(row.PPK_NC_Percentage);
                                                 return (
                                                     <TableRow key={row.MaterialDesc || i} hover sx={{ '&:nth-of-type(odd)': { backgroundColor: 'action.hover' } }}>
@@ -517,12 +615,19 @@ useEffect(() => {
                                                     </TableRow>
                                                 );
                                             })}
+                                            {processedMaterialData.length === 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={MATERIAL_COLUMNS.length} align="center" sx={{ color: 'text.secondary', py: 3 }}>
+                                                        No matching materials
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
                                         </TableBody>
                                     </Table>
                                 </TableContainer>
                                 <TablePagination
                                     component="div"
-                                    count={materialNCData.length}
+                                    count={processedMaterialData.length}
                                     page={page}
                                     onPageChange={(e, newPage) => setPage(newPage)}
                                     rowsPerPage={rowsPerPage}

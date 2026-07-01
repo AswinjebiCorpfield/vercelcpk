@@ -494,6 +494,7 @@ useEffect(() => {
                     variant="outlined"
                     sx={{ minWidth: 160, flex: '1 1 160px' }}
                     placeholder={isCAT ? 'Select CAT' : 'All'}
+                    InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
                   />
                 )}
                 getOptionLabel={option => (option === '' ? '' : option)}
@@ -529,6 +530,7 @@ useEffect(() => {
               variant="outlined"
               sx={{ minWidth: 160, flex: '1 1 160px' }}
               placeholder="All"
+              InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
             />
           )}
           getOptionLabel={option => formatMonthYear(option)}
@@ -562,6 +564,7 @@ useEffect(() => {
               variant="outlined"
               sx={{ minWidth: 160, flex: '1 1 160px' }}
               placeholder="All"
+              InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
             />
           )}
           getOptionLabel={option => formatMonthYear(option)}
@@ -653,7 +656,7 @@ useEffect(() => {
                           sx={{
                             marginTop: 2,
                           }}
-                          margin={showAllTicks ? { left: 80, right: 50, top: 75, bottom: 90 } : { left: 80, right: 50, top: 55, bottom: 70 }}
+                          margin={showAllTicks ? { left: 80, right: 50, top: 75, bottom: 130 } : { left: 80, right: 50, top: 55, bottom: 110 }}
                           series={[
                             {
                               data: dataset.acData,
@@ -671,7 +674,7 @@ useEffect(() => {
                             },
                           ]}
                           
-                    slotProps={{ legend: { labelStyle: { fontSize: 16 } }, noDataOverlay: { message: 'No Result' } }}
+                    slotProps={{ legend: { labelStyle: { fontSize: 16 }, position: { vertical: 'bottom', horizontal: 'middle' }, direction: 'row' }, noDataOverlay: { message: 'No Result' } }}
                           xAxis={[{
                             data: xLabelsFmt,
                             scaleType: 'band',

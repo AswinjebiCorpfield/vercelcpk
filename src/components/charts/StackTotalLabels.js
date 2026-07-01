@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '@mui/material/styles';
 import { useXScale, useYScale } from '@mui/x-charts/hooks';
 
 // BRD S1: "Include total count label for stacked column chart."
@@ -18,7 +19,12 @@ import { useXScale, useYScale } from '@mui/x-charts/hooks';
 // `angle` rotates each label (degrees). When there are many bars the horizontal
 // totals overlap, so the charts pass angle=-90 to stand them up vertically
 // (reading bottom-to-top), mirroring the angled x-axis tick labels.
-export default function StackTotalLabels({ categories = [], totals = [], positions, labels, color = '#ffffff', angle = 0 }) {
+export default function StackTotalLabels({ categories = [], totals = [], positions, labels, color, angle = 0 }) {
+  const theme = useTheme();
+  // Theme-aware default so the total reads on both light and dark backgrounds
+  // (it sits above the bar, against the page background). An explicit `color`
+  // prop still overrides.
+  const fill = color || theme.palette.text.primary;
   const xScale = useXScale();
   const yScale = useYScale();
   if (!xScale || !yScale || typeof xScale.bandwidth !== 'function') return null;
@@ -47,7 +53,7 @@ export default function StackTotalLabels({ categories = [], totals = [], positio
             transform={rotated ? `rotate(${angle}, ${px}, ${py})` : undefined}
             fontSize={rotated ? 12 : 14}
             fontWeight={700}
-            fill={color}
+            fill={fill}
           >
             {text}
           </text>

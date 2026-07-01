@@ -1271,7 +1271,7 @@ const SubsampleScatterDistribution = () => {
           <Grid container spacing={1}>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={5}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>Dept:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>Dept:</Typography>
               </Grid>
               <Grid item xs={7}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{selectedData?.Dept ?? "-"}</Typography>
@@ -1279,7 +1279,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={5}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>MachineId:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>MachineId:</Typography>
               </Grid>
               <Grid item xs={7}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{selectedData?.MachineId ?? "-"}</Typography>
@@ -1287,7 +1287,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={3}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>MaterialDesc:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>MaterialDesc:</Typography>
               </Grid>
               <Grid item xs={9}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{selectedData?.MaterialDesc ?? "-"}</Typography>
@@ -1295,7 +1295,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={3}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>DimensionDesc:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>DimensionDesc:</Typography>
               </Grid>
               <Grid item xs={9}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{selectedData?.DimensionDesc ?? "-"}</Typography>
@@ -1303,7 +1303,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={5}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>CAT:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>CAT:</Typography>
               </Grid>
               <Grid item xs={7}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{selectedData?.CAT ?? "-"}</Typography>
@@ -1317,7 +1317,7 @@ const SubsampleScatterDistribution = () => {
           <Grid container spacing={1}>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>No of Data:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>No of Data:</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{statisticsToShow?.Count ?? allData.length ?? '-'}</Typography>
@@ -1325,7 +1325,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>Mean:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>Mean:</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{statisticsToShow?.MeanValue ?? allData[0]?.MeanValue ?? '-'}</Typography>
@@ -1333,7 +1333,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>StdDev:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>StdDev:</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{(statisticsToShow?.StdValue ? Number(statisticsToShow.StdValue).toFixed(3) : '-')}</Typography>
@@ -1341,7 +1341,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>LSL:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>LSL:</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{allData[0]?.LSL ?? '-'}</Typography>
@@ -1349,7 +1349,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>USL:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>USL:</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{allData[0]?.USL ?? '-'}</Typography>
@@ -1357,7 +1357,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>CP:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>CP:</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold', color: metricColor(statisticsToShow?.CPValue) }}>{statisticsToShow?.CPValue ?? '-'}</Typography>
@@ -1365,7 +1365,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>CPK:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>CPK:</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold', color: metricColor(statisticsToShow?.CPKValue) }}>{statisticsToShow?.CPKValue ?? '-'}</Typography>
@@ -1373,7 +1373,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>PP:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>PP:</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold', color: metricColor(statisticsToShow?.PPValue) }}>{statisticsToShow?.PPValue ?? '-'}</Typography>
@@ -1381,7 +1381,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
             <Grid container item xs={12} alignItems="top">
               <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>PPK:</Typography>
+                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>PPK:</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold', color: metricColor(statisticsToShow?.PPKValue) }}>{statisticsToShow?.PPKValue ?? '-'}</Typography>

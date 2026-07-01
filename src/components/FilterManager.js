@@ -61,7 +61,7 @@ const getCurrentMonth = () => {
 
 const FILTER_KEYS = ['Dept', 'MachineId', 'MaterialDesc', 'DimensionDesc', 'CAT'];
 
-const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOptions, leading }) => {
+const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOptions, leading, trailing, bottomRow }) => {
   const { dispatch } = useValue();
   const [globalSearch, setGlobalSearch] = useState('');
   const [clearKeys, setClearKeys] = useState(
@@ -318,28 +318,13 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
 
   return (
     <Box className="filter-area" sx={{
-      mb: 2, display: 'flex', alignItems: 'flex-end', gap: 1, flexWrap: 'wrap', position: 'sticky',
+      mb: 2, position: 'sticky',
       top: 0, zIndex: 1, backgroundColor: 'background.paper', border: '1px solid', borderColor: 'divider',
       padding: '12px 14px', borderRadius: '10px'
     }}>
+    <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, flexWrap: 'wrap' }}>
       {leading}
-      <TextField
-        label="Search"
-        value={globalSearch}
-        onChange={(e) => handleGlobalSearchChange(e.target.value)}
-        variant="outlined"
-        size="small"
-        sx={{ minWidth: 160 }}
-        placeholder="Search across all fields"
-        InputProps={{
-          endAdornment: (
-            <InputAdornment position="end">
-              <SearchIcon color="action" />
-            </InputAdornment>
-          ),
-        }}
-      />
-      {FILTER_KEYS.map((key) => {
+      {FILTER_KEYS.map((key, idx) => {
         const isCAT = key === 'CAT';
         const filterValue = isCAT ? (Array.isArray(filters[key]) ? filters[key] : []) : (filters[key] ?? '');
         const baseOptions = isCAT ? availableOptions[key] : ['', ...availableOptions[key]];
@@ -349,7 +334,9 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
           : baseOptions;
         const hasValue = !isCAT && (filterValue !== '');
         return (
-          <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          // First field gets ml:auto so the whole filter-field group right-aligns
+          // (FILTERS toggle stays left, Clear stays far right).
+          <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ...(idx === 0 && { ml: 'auto' }) }}>
             <Autocomplete
               key={isCAT ? key : `${key}_${clearKeys[key] ?? 0}`}
               multiple={isCAT}
@@ -363,6 +350,7 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
                   variant="outlined"
                   sx={{ minWidth: 138 }}
                   placeholder={isCAT ? 'Select CAT (all if none)' : 'All'}
+                  InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
                   InputProps={{
                     ...params.InputProps,
                     endAdornment: (
@@ -453,6 +441,7 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
               variant="outlined"
               sx={{ minWidth: 138 }}
               placeholder="All"
+              InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
             />
           )}
           getOptionLabel={option => formatMonthYear(option)}
@@ -489,6 +478,7 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
               variant="outlined"
               sx={{ minWidth: 138, maxHeight: 300 }}
               placeholder="All"
+              InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
             />
           )}
           getOptionLabel={option => formatMonthYear(option)}
@@ -506,14 +496,39 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
           renderTags={() => null}
         />
       </Box>
+      {trailing && (
+        <Box sx={{ display: 'flex', alignItems: 'center', alignSelf: 'center' }}>
+          {trailing}
+        </Box>
+      )}
       <Tooltip title="Clear all filters">
         <IconButton
           onClick={handleClearFilters}
-          sx={{ ml: 'auto', mb: 0.25, border: '1px solid', borderColor: 'divider', borderRadius: 1.5, color: 'text.secondary', '&:hover': { color: 'error.main', borderColor: 'error.main' } }}
+          sx={{ mb: 0.25, border: '1px solid', borderColor: 'divider', borderRadius: 1.5, color: 'text.secondary', '&:hover': { color: 'error.main', borderColor: 'error.main' } }}
         >
           <FilterAltOffIcon fontSize="small" />
         </IconButton>
       </Tooltip>
+    </Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+        <TextField
+          label="Search"
+          value={globalSearch}
+          onChange={(e) => handleGlobalSearchChange(e.target.value)}
+          variant="outlined"
+          size="small"
+          sx={{ minWidth: 220 }}
+          placeholder="Search across all fields"
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <SearchIcon color="action" />
+              </InputAdornment>
+            ),
+          }}
+        />
+        {bottomRow}
+      </Box>
     </Box>
   );
 };

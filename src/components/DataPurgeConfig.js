@@ -76,7 +76,7 @@ const DataPurgeConfig = () => {
         <DeleteSweepIcon sx={{ fontSize: 36, color: '#ff8a65' }} />
         <Typography variant="h4" sx={{ fontWeight: 'bold' }}>Data Purging Configuration</Typography>
       </Stack>
-      <Typography variant="body1" sx={{ color: 'grey.500', mb: 3 }}>
+      <Typography variant="body1" sx={{ color: 'text.secondary', mb: 3 }}>
         Define retention policies per data source and purge data beyond the retention window.
         Restricted to PID administrators.
       </Typography>
@@ -91,11 +91,11 @@ const DataPurgeConfig = () => {
                 <Table size="small" sx={{ '& td, & th': { borderColor: 'rgba(255,255,255,0.12)' } }}>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: 'action.hover' }}>
-                      <TableCell sx={{ color: '#cfe8ff', fontWeight: 700 }}>Data Source</TableCell>
-                      <TableCell sx={{ color: '#cfe8ff', fontWeight: 700 }}>Grain</TableCell>
-                      <TableCell sx={{ color: '#cfe8ff', fontWeight: 700 }}>Retention (months)</TableCell>
-                      <TableCell sx={{ color: '#cfe8ff', fontWeight: 700 }}>Est. rows to purge</TableCell>
-                      <TableCell sx={{ color: '#cfe8ff', fontWeight: 700 }}>Enabled</TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Data Source</TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Grain</TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Retention (months)</TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Est. rows to purge</TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Enabled</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -103,10 +103,10 @@ const DataPurgeConfig = () => {
                       const est = estimate.find((e) => e.key === r.key);
                       return (
                         <TableRow key={r.key} hover>
-                          <TableCell sx={{ color: '#fff', fontWeight: 600 }}>{r.label}
+                          <TableCell sx={{ color: 'text.primary', fontWeight: 600 }}>{r.label}
                             <Typography variant="caption" sx={{ color: 'grey.600', display: 'block' }}>{r.key}</Typography>
                           </TableCell>
-                          <TableCell sx={{ color: '#e0e0e0' }}>{r.grain}</TableCell>
+                          <TableCell sx={{ color: 'text.primary' }}>{r.grain}</TableCell>
                           <TableCell>
                             <TextField
                               type="number" size="small" value={r.retention}
@@ -154,7 +154,7 @@ const DataPurgeConfig = () => {
               />
               <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.12)' }} />
               <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Typography sx={{ color: 'grey.400' }}>Total rows affected</Typography>
+                <Typography sx={{ color: 'text.secondary' }}>Total rows affected</Typography>
                 <Chip label={fmt(totalRows)} color={totalRows > 0 ? 'warning' : 'default'} />
               </Stack>
               <Button
@@ -173,7 +173,7 @@ const DataPurgeConfig = () => {
                 <ShieldIcon sx={{ color: '#66bb6a' }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Safeguards</Typography>
               </Stack>
-              <Typography variant="body2" sx={{ color: 'grey.500' }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                 • Purges are irreversible and logged to the audit trail.<br />
                 • Dry run is enabled by default.<br />
                 • Validation metrics are retained for traceability.
@@ -196,7 +196,7 @@ const DataPurgeConfig = () => {
                 ? `Dry run completed — ${fmt(result.rows)} rows across ${result.sources} source(s) would be purged.`
                 : `Purge completed — ${fmt(result.rows)} rows across ${result.sources} source(s) removed.`}
             </Alert>
-            <Typography variant="caption" sx={{ color: 'grey.500' }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {result.when} · Dept: {result.dept} · Older than: {result.olderThan}
             </Typography>
           </CardContent>

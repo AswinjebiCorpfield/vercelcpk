@@ -1148,7 +1148,7 @@ function ChartBlock({
             <Grid container spacing={1}>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={5}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     Dept:
                   </Typography>
                 </Grid>
@@ -1160,7 +1160,7 @@ function ChartBlock({
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={5}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     MachineId:
                   </Typography>
                 </Grid>
@@ -1172,7 +1172,7 @@ function ChartBlock({
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={3}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     MaterialDesc:
                   </Typography>
                 </Grid>
@@ -1184,7 +1184,7 @@ function ChartBlock({
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={3}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     DimensionDesc:
                   </Typography>
                 </Grid>
@@ -1196,7 +1196,7 @@ function ChartBlock({
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={5}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     CAT:
                   </Typography>
                 </Grid>
@@ -1217,7 +1217,7 @@ function ChartBlock({
             <Grid container spacing={1}>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     No of Data:
                   </Typography>
                 </Grid>
@@ -1229,7 +1229,7 @@ function ChartBlock({
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     Mean:
                   </Typography>
                 </Grid>
@@ -1241,7 +1241,7 @@ function ChartBlock({
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     StdDev:
                   </Typography>
                 </Grid>
@@ -1253,7 +1253,7 @@ function ChartBlock({
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     LSL:
                   </Typography>
                 </Grid>
@@ -1265,7 +1265,7 @@ function ChartBlock({
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     USL:
                   </Typography>
                 </Grid>
@@ -1277,7 +1277,7 @@ function ChartBlock({
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     PP:
                   </Typography>
                 </Grid>
@@ -1289,7 +1289,7 @@ function ChartBlock({
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                     PPK:
                   </Typography>
                 </Grid>
@@ -1303,7 +1303,7 @@ function ChartBlock({
               {first?.CarbonizingFurnaceSummary && (
                 <Grid container item xs={12} alignItems="top">
                   <Grid item xs={6}>
-                    <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                    <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                       Carbonizing Furnace Summary:
                     </Typography>
                   </Grid>
@@ -1319,7 +1319,7 @@ function ChartBlock({
               {first?.TemperingFurnaceSummary && (
                 <Grid container item xs={12} alignItems="top">
                   <Grid item xs={6}>
-                    <Typography variant="h5" sx={{ color: 'lightgrey', fontWeight: 'normal' }}>
+                    <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
                       Tempering Furnace Summary:
                     </Typography>
                   </Grid>

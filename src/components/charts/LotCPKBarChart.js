@@ -511,6 +511,10 @@ const LotCPKBarChart = () => {
   // angle them 45° and give the plot extra bottom room so none overlap/clip.
   const dailyManyPoints = firstTickLabelByMonth.size > 14;
 
+  // Daily chart has many points; give it a wide fixed width (≈8px/point) so it
+  // overflows its container and scrolls horizontally instead of cramming together.
+  const dailyWidth = Math.max(1000, (dailyDatasetsFilled.xLabels?.length || 0) * 8 + 130);
+
   // Whether there is any real (non-null) value to plot. When the filter matches
   // nothing, gap-filling can still leave null-filled arrays, which render an
   // empty chart that pops a broken "NaN / null%" tooltip on hover — so we show a
@@ -637,6 +641,7 @@ const LotCPKBarChart = () => {
                     variant="outlined"
                     sx={{ minWidth: 160, flex: '1 1 160px' }}
                     placeholder={isCAT ? 'Select CAT' : 'All'}
+                    InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
                   />
                 )}
                 getOptionLabel={(option) => option === '' ? '' : option}
@@ -674,6 +679,7 @@ const LotCPKBarChart = () => {
                 variant="outlined"
                 sx={{ minWidth: 160, flex: '1 1 160px' }}
                 placeholder="All"
+                InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
               />
             )}
             getOptionLabel={option => formatMonthYear(option)}
@@ -707,6 +713,7 @@ const LotCPKBarChart = () => {
                 variant="outlined"
                 sx={{ minWidth: 160, flex: '1 1 160px' }}
                 placeholder="All"
+                InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
               />
             )}
             getOptionLabel={option => formatMonthYear(option)}
@@ -780,14 +787,14 @@ const LotCPKBarChart = () => {
                   <div style={{ width: '100%', minWidth: 520 }}>
                     <BarChart
                       height={370}
-                      sx={{
+                      sx={(theme) => ({
                         "& .MuiChartsAxis-directionY .MuiChartsAxis-label": {
-                          fill: "lightblue !important",
+                          fill: `${theme.palette.primary.main} !important`,
                           transform: "translateX(-25px) !important",
                         },
-                      }}
-                      slotProps={{ legend: { labelStyle: { fontSize: 16 } }, noDataOverlay: { message: 'No Result' } }}
-                      margin={{ left: 80, right: 50, top: monthlyManyPoints ? 70 : 50, bottom: monthlyManyPoints ? 90 : 70 }}
+                      })}
+                      slotProps={{ legend: { labelStyle: { fontSize: 16 }, position: { vertical: 'bottom', horizontal: 'middle' }, direction: 'row' }, noDataOverlay: { message: 'No Result' } }}
+                      margin={{ left: 80, right: 50, top: monthlyManyPoints ? 70 : 50, bottom: monthlyManyPoints ? 130 : 110 }}
                       series={[
                         {
                           data: displayMode === 'Percentage' ? monthlyDatasetsFilled.acPercent : monthlyDatasetsFilled.acData,
@@ -896,19 +903,20 @@ const LotCPKBarChart = () => {
                     <Typography sx={{ fontSize: 16, color: 'grey.600' }}>No Result</Typography>
                   </Box>
                 ) : (
-                  <div style={{ width: '100%', minWidth: 520 }}>
+                  <div style={{ width: dailyWidth, minWidth: 520 }}>
                   <LineChart
-                    sx={{
+                    width={dailyWidth}
+                    sx={(theme) => ({
                       "& .MuiMarkElement-root": {
                         scale: "0.8",
                       },
                       "& .MuiChartsAxis-directionY .MuiChartsAxis-label": {
-                        fill: "lightblue !important",
+                        fill: `${theme.palette.primary.main} !important`,
                         transform: "translateX(-25px) !important",
                       },
-                    }}
-                    slotProps={{ legend: { labelStyle: { fontSize: 14 } }, noDataOverlay: { message: 'No Result' } }}
-                    margin={{ left: 80, right: 50, top: dailyManyPoints ? 70 : 50, bottom: dailyManyPoints ? 90 : 70 }}
+                    })}
+                    slotProps={{ legend: { hidden: true }, noDataOverlay: { message: 'No Result' } }}
+                    margin={{ left: 80, right: 50, top: 30, bottom: dailyManyPoints ? 90 : 70 }}
                     onMarkClick={(event, d) => handleBarClick(event, d, dailyDatasetsFilled)}
                     height={340}
 
@@ -918,22 +926,26 @@ const LotCPKBarChart = () => {
                         label: displayMode === 'Percentage' ? 'CPK ≥ 1 Individual Lot (%)' : 'Cpk ≥ 1 Individual Lot (Count)',
                         id: 'acId-day',
                         color: '#22C55E',
-                        connectNulls: isTimeSeries,
+                        connectNulls: false, // leave a gap at null days — don't bridge or draw as 0
                         showMark: true,          // 显示每天的点
                         curve: 'linear',
                         valueFormatter: (v) =>
-                          displayMode === 'Percentage' ? `${v}%` : `${v}`,
+                          (v === null || v === undefined)
+                            ? null // null → omit this series' row from the tooltip
+                            : (displayMode === 'Percentage' ? `${v}%` : `${v}`),
                       },
                       {
                         data: displayMode === 'Percentage' ? dailyDatasetsFilled.ncPercent : dailyDatasetsFilled.ncData,
                         label: displayMode === 'Percentage' ? 'CPK < 1 Individual Lot (%)' : 'CPK < 1 Individual Lot (Count)',
                         id: 'ncId-day',
                         color: 'red',
-                        connectNulls: isTimeSeries,
+                        connectNulls: false, // leave a gap at null days — don't bridge or draw as 0
                         showMark: true,         // 显示每天的点
                         curve: 'linear',
                         valueFormatter: (v) =>
-                          displayMode === 'Percentage' ? `${v}%` : `${v}`,
+                          (v === null || v === undefined)
+                            ? null // null → omit this series' row from the tooltip
+                            : (displayMode === 'Percentage' ? `${v}%` : `${v}`),
                       },
                     ]}
                     xAxis={[{
@@ -963,6 +975,20 @@ const LotCPKBarChart = () => {
                   </div>
                 )}
               </Box>
+              {/* Static legend outside the horizontally-scrolling chart so it's always visible */}
+              {!dataLoading && dailyData !== null && dailyHasData && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, flexWrap: 'wrap', mt: 1 }}>
+                  {[
+                    { color: '#22C55E', label: displayMode === 'Percentage' ? 'Cpk ≥ 1 Individual Lot (%)' : 'Cpk ≥ 1 Individual Lot (Count)' },
+                    { color: 'red', label: displayMode === 'Percentage' ? 'CPK < 1 Individual Lot (%)' : 'CPK < 1 Individual Lot (Count)' },
+                  ].map((item) => (
+                    <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ width: 16, height: 16, borderRadius: 0.5, backgroundColor: item.color }} />
+                      <Typography sx={{ fontSize: 14 }}>{item.label}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
             </Grid>
           </Grid>
         </Card>
