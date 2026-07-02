@@ -8,6 +8,14 @@ import {
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import HistoryIcon from '@mui/icons-material/History';
 import ShieldIcon from '@mui/icons-material/Shield';
+import StorageIcon from '@mui/icons-material/Storage';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import DescriptionIcon from '@mui/icons-material/Description';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import ViewInArIcon from '@mui/icons-material/ViewInAr';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
 // BRD General item 5 — "Configuration page for all data purging".
 // The BRD leaves the detailed spec open, so this is a sensible, professional
@@ -21,6 +29,13 @@ const DATA_SOURCES = [
   { key: 'QMM_Capability_CPK', label: 'Dimension Capability', grain: 'Dimension / subsample', defRetention: 36 },
   { key: 'QMM_ProcessCapability_import', label: 'Validation Metrics', grain: 'Dimension', defRetention: 12 },
 ];
+
+const SOURCE_ICONS = {
+  QMM_InspectionData_import: { Icon: DescriptionIcon, color: '#42a5f5' },
+  QMM_InspectionData_CPK: { Icon: BarChartIcon, color: '#ab47bc' },
+  QMM_Capability_CPK: { Icon: ViewInArIcon, color: '#26a69a' },
+  QMM_ProcessCapability_import: { Icon: ShowChartIcon, color: '#ff8a65' },
+};
 
 const DEPTS = ['All', 'HT', 'CF', 'MS', 'STP'];
 
@@ -52,6 +67,10 @@ const DataPurgeConfig = () => {
   }, [rules, dept, olderThan]);
 
   const totalRows = estimate.reduce((a, b) => a + b.rows, 0);
+  const enabledCount = rules.filter((r) => r.enabled).length;
+  const now = new Date();
+  const lastUpdatedStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const lastUpdatedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
   const setRetention = (key, val) =>
     setRules((rs) => rs.map((r) => (r.key === key ? { ...r, retention: Number(val) || 0 } : r)));
@@ -71,7 +90,7 @@ const DataPurgeConfig = () => {
   };
 
   return (
-    <Box sx={{ px: 4, py: 3, maxWidth: 1200, mx: 'auto' }}>
+    <Box sx={{ px: 1.5, py: 3, width: '100%', boxSizing: 'border-box' }}>
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
         <DeleteSweepIcon sx={{ fontSize: 36, color: '#ff8a65' }} />
         <Typography variant="h4" sx={{ fontWeight: 'bold' }}>Data Purging Configuration</Typography>
@@ -84,6 +103,30 @@ const DataPurgeConfig = () => {
       <Grid container spacing={3}>
         {/* Retention policy table */}
         <Grid item xs={12} md={8}>
+          {/* KPI summary cards */}
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+        {[
+          { icon: <StorageIcon />, color: '#42a5f5', value: rules.length, label: 'Retention Sources', sub: 'Total configured' },
+          { icon: <ShieldIcon />, color: '#66bb6a', value: enabledCount, label: 'Enabled Policies', sub: 'Active' },
+          { icon: <DeleteSweepIcon />, color: '#ff8a65', value: fmt(totalRows), label: 'Rows to Purge (Est.)', sub: 'Across all sources', highlight: true },
+          { icon: <CalendarMonthIcon />, color: '#ab47bc', value: lastUpdatedStr, label: 'Last Updated', sub: lastUpdatedTime, small: true },
+        ].map((c) => (
+          <Grid item xs={12} sm={6} md={3} key={c.label}>
+            <Card sx={{ backgroundColor: 'background.paper', height: '100%' }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ width: 44, height: 44, flexShrink: 0, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: `${c.color}22`, color: c.color }}>
+                  {c.icon}
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>{c.label}</Typography>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: c.small ? 16 : 24, color: c.highlight ? '#ff8a65' : 'text.primary', lineHeight: 1.2 }}>{c.value}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{c.sub}</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+          </Grid>
           <Card sx={{ backgroundColor: 'background.paper' }}>
             <CardContent>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>Retention Policy</Typography>
@@ -95,16 +138,27 @@ const DataPurgeConfig = () => {
                       <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Grain</TableCell>
                       <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Retention (months)</TableCell>
                       <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Est. rows to purge</TableCell>
-                      <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Enabled</TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontWeight: 700 }}>Status</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {rules.map((r) => {
                       const est = estimate.find((e) => e.key === r.key);
+                      const rows = est?.rows || 0;
+                      const src = SOURCE_ICONS[r.key] || { Icon: DescriptionIcon, color: '#42a5f5' };
+                      const SrcIcon = src.Icon;
                       return (
                         <TableRow key={r.key} hover>
-                          <TableCell sx={{ color: 'text.primary', fontWeight: 600 }}>{r.label}
-                            <Typography variant="caption" sx={{ color: 'grey.600', display: 'block' }}>{r.key}</Typography>
+                          <TableCell sx={{ color: 'text.primary', fontWeight: 600 }}>
+                            <Stack direction="row" alignItems="center" spacing={1.5}>
+                              <Box sx={{ width: 38, height: 38, flexShrink: 0, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: `${src.color}22`, color: src.color }}>
+                                <SrcIcon fontSize="small" />
+                              </Box>
+                              <Box>
+                                {r.label}
+                                <Typography variant="caption" sx={{ color: 'grey.600', display: 'block', fontWeight: 400 }}>{r.key}</Typography>
+                              </Box>
+                            </Stack>
                           </TableCell>
                           <TableCell sx={{ color: 'text.primary' }}>{r.grain}</TableCell>
                           <TableCell>
@@ -116,11 +170,16 @@ const DataPurgeConfig = () => {
                               InputProps={{ endAdornment: <InputAdornment position="end">mo</InputAdornment> }}
                             />
                           </TableCell>
-                          <TableCell sx={{ color: (est?.rows || 0) > 0 ? '#ff8a65' : 'grey.600', fontWeight: 700 }}>
-                            {fmt(est?.rows || 0)}
+                          <TableCell sx={{ color: rows > 0 ? '#ff8a65' : '#66bb6a', fontWeight: 700 }}>
+                            {fmt(rows)}
                           </TableCell>
                           <TableCell>
-                            <Switch checked={r.enabled} onChange={() => toggleEnabled(r.key)} color="warning" />
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                              <Switch checked={r.enabled} onChange={() => toggleEnabled(r.key)} color="success" />
+                              <Typography variant="body2" sx={{ color: r.enabled ? '#66bb6a' : 'text.secondary', fontWeight: 600 }}>
+                                {r.enabled ? 'Enabled' : 'Disabled'}
+                              </Typography>
+                            </Stack>
                           </TableCell>
                         </TableRow>
                       );
@@ -128,6 +187,22 @@ const DataPurgeConfig = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
+              {/* Pagination footer (single page — 4 sources) */}
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 1.5, flexWrap: 'wrap', gap: 1 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Showing 1 to {rules.length} of {rules.length} entries
+                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Button size="small" variant="outlined" disabled sx={{ minWidth: 32, px: 0 }}><ChevronLeftIcon fontSize="small" /></Button>
+                  <Button size="small" variant="outlined">1</Button>
+                  <Button size="small" variant="outlined" disabled sx={{ minWidth: 32, px: 0 }}><ChevronRightIcon fontSize="small" /></Button>
+                  <TextField select size="small" value={10} sx={{ ml: 1, width: 110 }}>
+                    <MenuItem value={10}>10 / page</MenuItem>
+                    <MenuItem value={25}>25 / page</MenuItem>
+                    <MenuItem value={50}>50 / page</MenuItem>
+                  </TextField>
+                </Stack>
+              </Stack>
             </CardContent>
           </Card>
         </Grid>
@@ -154,7 +229,7 @@ const DataPurgeConfig = () => {
               />
               <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.12)' }} />
               <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Typography sx={{ color: 'text.secondary' }}>Total rows affected</Typography>
+                <Typography sx={{ color: 'text.secondary' }}>Total rows affected (est.)</Typography>
                 <Chip label={fmt(totalRows)} color={totalRows > 0 ? 'warning' : 'default'} />
               </Stack>
               <Button
