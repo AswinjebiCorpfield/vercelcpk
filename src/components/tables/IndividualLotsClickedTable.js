@@ -703,42 +703,46 @@ const IndividualLotClickedTable = () => {
             </Box>
             {/* 右侧主表格内容区域 */}
             <Box sx={{ flex: 1, minWidth: 0, order: { xs: 1, md: 'unset' }, width: { xs: '100%', md: 'auto' }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', p: { xs: 2, md: 3 } }}>
-                <Typography variant="h4" gutterBottom>
-                    {`${seriesId.slice(0, 2) === 'nc'? 'CPK < 1' : 'CPK ≥ 1'} Individual Lot Measurement Table`}
-                    {/* Individual Lot One {periodType === 'month' ? ' Month' : periodType === 'date' ? ' Day' : ''} Table */}
-                </Typography>
-                <Typography variant="h6" gutterBottom>
-                    {
-                        periodType === 'month'
-                            ? `MeasDate: ${formatMonthYear(date?.substring(0, 7)) || 'No date provided'}`
-                            : periodType === 'date'
-                                ? `MeasDate: ${formatMonthDate(date) || 'No date provided'}`
-                                : 'No period info'
-                    }
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, mb: 1 }}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="h4" gutterBottom sx={{ mb: 0.5 }}>
+                        {`${seriesId.slice(0, 2) === 'nc'? 'CPK < 1' : 'CPK ≥ 1'} Individual Lot Measurement Table`}
+                    </Typography>
+                    <Typography variant="h6" sx={{ mb: 0 }}>
+                        {
+                            periodType === 'month'
+                                ? `MeasDate: ${formatMonthYear(date?.substring(0, 7)) || 'No date provided'}`
+                                : periodType === 'date'
+                                    ? `MeasDate: ${formatMonthDate(date) || 'No date provided'}`
+                                    : 'No period info'
+                        }
+                    </Typography>
+                  </Box>
+                  {!loading && pieFilteredData.length > 0 && (
+                    <CsvExportButton
+                        data={pieFilteredData}
+                        headers={columns.filter(col => col.id !== 'FurtherAnalysis').map(col => col.id)}
+                        filename={buildExportFilename(pieFilteredData[0]?.MaterialDesc, formatMonthYear(date?.substring(0, 7)), 'Individual_Lot')}
+                        generalInfo={[
+                            { label: 'Report', value: 'Individual Lot Measurement Table' },
+                            { label: 'MeasDate', value: formatMonthYear(date?.substring(0, 7)) },
+                            { label: 'Dept', value: pieFilteredData[0]?.Dept || '' },
+                            { label: 'MachineId', value: pieFilteredData[0]?.MachineId || '' },
+                            { label: 'MaterialDesc', value: pieFilteredData[0]?.MaterialDesc || '' },
+                            { label: 'CAT', value: pieFilteredData[0]?.CAT || '' },
+                        ]}
+                        sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+                    >
+                        Download Individual Lot Data
+                    </CsvExportButton>
+                  )}
+                </Box>
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
                         <CircularProgress disableShrink color="primary" sx={{ height: '100vh' }} />
                     </Box>
                 ) : pieFilteredData.length > 0 ? (
                     <>
-                        {/* 导出按钮放在表格正上方 */}
-                        <CsvExportButton
-                            data={pieFilteredData}
-                            headers={columns.filter(col => col.id !== 'FurtherAnalysis').map(col => col.id)}
-                            filename={buildExportFilename(pieFilteredData[0]?.MaterialDesc, formatMonthYear(date?.substring(0, 7)), 'Individual_Lot')}
-                            generalInfo={[
-                                { label: 'Report', value: 'Individual Lot Measurement Table' },
-                                { label: 'MeasDate', value: formatMonthYear(date?.substring(0, 7)) },
-                                { label: 'Dept', value: pieFilteredData[0]?.Dept || '' },
-                                { label: 'MachineId', value: pieFilteredData[0]?.MachineId || '' },
-                                { label: 'MaterialDesc', value: pieFilteredData[0]?.MaterialDesc || '' },
-                                { label: 'CAT', value: pieFilteredData[0]?.CAT || '' },
-                            ]}
-                            sx={{ mb: 2 }}
-                        >
-                            Download Individual Lot Data
-                        </CsvExportButton>
                         <TableContainer component={Paper}>
                             <Table
                                 sx={{

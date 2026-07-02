@@ -1131,7 +1131,7 @@ const OverallLotsDistributionTable = () => {
         {/* 右侧块 */}
         <Grid item xs={12} md={6}>
           {/* General Information + Statistics (top of right column) */}
-          <Grid container spacing={3} sx={{ mb: 3 }}>
+          <Grid container spacing={3} sx={{ mb: displayPP ? 3 : 0, height: displayPP ? undefined : '100%' }}>
             <Grid item xs={12} sm={7}>
               <Box sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', height: '100%' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
@@ -1257,7 +1257,7 @@ const OverallLotsDistributionTable = () => {
                 { label: 'CAT', value: row?.CAT || '' },
               ]}
               filename={buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data')}
-              sx={{ flexShrink: 0, minWidth: 44, px: 1, height: 40 }}
+              sx={{ flexShrink: 0, minWidth: 44, px: 1, height: 34 }}
               title="Download Subsample Data"
             >
               <DownloadIcon fontSize="small" />
@@ -1268,7 +1268,7 @@ const OverallLotsDistributionTable = () => {
               value={subSearch}
               onChange={(e) => { setSubSearch(e.target.value); setSubPage(0); }}
               InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} /></InputAdornment>) }}
-              sx={{ minWidth: 200, '& .MuiInputBase-root': { height: 40 } }}
+              sx={{ minWidth: 200, '& .MuiInputBase-root': { height: 34 } }}
             />
             </Box>
             </Box>
