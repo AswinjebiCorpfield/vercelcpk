@@ -317,6 +317,7 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
   };
 
   return (
+    <>
     <Box className="filter-area" sx={{
       mb: 2, position: 'sticky',
       top: 0, zIndex: 1, backgroundColor: 'background.paper', border: '1px solid', borderColor: 'divider',
@@ -510,19 +511,20 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
         </IconButton>
       </Tooltip>
     </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+    </Box>
+    <Box className="filter-toolbar" sx={{ mb: 2, backgroundColor: 'background.paper', border: '1px solid', borderColor: 'divider', padding: '4px 14px', borderRadius: '10px' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <TextField
-          label="Search"
           value={globalSearch}
           onChange={(e) => handleGlobalSearchChange(e.target.value)}
           variant="outlined"
           size="small"
-          sx={{ minWidth: 220 }}
-          placeholder="Search across all fields"
+          sx={{ minWidth: 220, '& .MuiInputBase-root': { height: 36 } }}
+          placeholder="Search..."
           InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <SearchIcon color="action" />
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" color="action" />
               </InputAdornment>
             ),
           }}
@@ -530,6 +532,7 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
         {bottomRow}
       </Box>
     </Box>
+    </>
   );
 };
 

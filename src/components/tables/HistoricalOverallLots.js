@@ -285,6 +285,10 @@ const MonthlyHistoricalOverallLots = () => {
   // 清除所有月份的过滤
   const handleClearAllFilters = () => {
     setMonthRangeFilters({});
+    setModalStartMonth('');
+    setModalEndMonth('');
+    setModalMin('');
+    setModalMax('');
   };
 
   // ===== Filter-bar month/value modal =====
@@ -292,32 +296,52 @@ const MonthlyHistoricalOverallLots = () => {
   // (year + month) and set a min/max range — writes to the same monthRangeFilters
   // that the per-column funnel uses, so the table reacts identically.
   const [monthValueModalOpen, setMonthValueModalOpen] = useState(false);
-  const [modalMonth, setModalMonth] = useState('');
+  const [modalStartMonth, setModalStartMonth] = useState('');
+  const [modalEndMonth, setModalEndMonth] = useState('');
   const [modalMin, setModalMin] = useState('');
   const [modalMax, setModalMax] = useState('');
 
+  const resetMonthValueModalFields = () => {
+    setModalStartMonth('');
+    setModalEndMonth('');
+    setModalMin('');
+    setModalMax('');
+  };
   const openMonthValueModal = () => setMonthValueModalOpen(true);
-  const closeMonthValueModal = () => setMonthValueModalOpen(false);
+  const closeMonthValueModal = () => {
+    setMonthValueModalOpen(false);
+    resetMonthValueModalFields();
+  };
 
-  // Picking a month prefills min/max from any existing filter on that month.
+  // Clicking an active-filter chip prefills the range (single month) and its min/max.
   const handleModalMonthChange = (month) => {
-    setModalMonth(month || '');
+    setModalStartMonth(month || '');
+    setModalEndMonth(month || '');
     const existing = month ? monthRangeFilters[month] : null;
     setModalMin(existing?.min ?? '');
     setModalMax(existing?.max ?? '');
   };
 
+  // Apply the min/max to every month column between Start and End (inclusive).
   const handleApplyMonthValueFilter = () => {
-    if (!modalMonth) return;
+    const start = modalStartMonth || modalEndMonth;
+    const end = modalEndMonth || modalStartMonth;
+    if (!start && !end) return;
+    const lo = start <= end ? start : end;
+    const hi = start <= end ? end : start;
+    const monthsInRange = monthHeaderKeys.filter(m => m >= lo && m <= hi);
+    if (monthsInRange.length === 0) return;
     const noMin = modalMin === '' || modalMin === null || modalMin === undefined;
     const noMax = modalMax === '' || modalMax === null || modalMax === undefined;
     setMonthRangeFilters(prev => {
       const next = { ...prev };
-      if (noMin && noMax) {
-        delete next[modalMonth]; // nothing set → clear this month
-      } else {
-        next[modalMonth] = { min: modalMin, max: modalMax, exactValue: null };
-      }
+      monthsInRange.forEach(m => {
+        if (noMin && noMax) {
+          delete next[m]; // nothing set → clear these months
+        } else {
+          next[m] = { min: modalMin, max: modalMax, exactValue: null };
+        }
+      });
       return next;
     });
   };
@@ -328,7 +352,7 @@ const MonthlyHistoricalOverallLots = () => {
       delete next[month];
       return next;
     });
-    if (month === modalMonth) { setModalMin(''); setModalMax(''); }
+    if (month === modalStartMonth || month === modalEndMonth) { setModalMin(''); setModalMax(''); }
   };
 
   // 检查值是否在范围内（不包括dash）
@@ -642,7 +666,7 @@ const MonthlyHistoricalOverallLots = () => {
                   startIcon={<FilterAltIcon fontSize="small" />}
                   onClick={openMonthValueModal}
                   sx={{
-                    textTransform: 'none', whiteSpace: 'nowrap',
+                    textTransform: 'none', whiteSpace: 'nowrap', height: 36,
                     borderColor: activeMonthValueFilters.length ? 'primary.main' : 'divider',
                     color: activeMonthValueFilters.length ? 'primary.main' : 'text.secondary',
                   }}
@@ -666,20 +690,23 @@ const MonthlyHistoricalOverallLots = () => {
                     { label: 'Period', value: [filters.StartMonth, filters.EndMonth].filter(Boolean).join(' – ') },
                   ]}
                   filename={buildExportFilename(filters.MaterialDesc, [filters.StartMonth, filters.EndMonth].filter(Boolean).join('-'), 'Historical_Data')}
-                  sx={{ minWidth: 0, px: 1.25 }}
+                  sx={{ px: 1.5, height: 36, textTransform: 'none', whiteSpace: 'nowrap', color: 'text.secondary', borderColor: 'divider' }}
                 >
-                  <DownloadIcon fontSize="small" />
+                  <DownloadIcon fontSize="small" style={{ marginRight: 6 }} />
+                  Export
                 </CsvExportButton>
               </span>
             </Tooltip>
             <Tooltip title="Full screen">
-              <IconButton
+              <Button
                 onClick={toggleFullscreen}
+                variant="outlined"
                 size="small"
-                sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, color: 'primary.main' }}
+                startIcon={<FullscreenIcon fontSize="small" />}
+                sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap', color: 'text.secondary', borderColor: 'divider' }}
               >
-                <FullscreenIcon fontSize="small" />
-              </IconButton>
+                Full Screen
+              </Button>
             </Tooltip>
             <Tooltip title="Adjust table font size">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1, minWidth: 180 }}>
@@ -740,29 +767,41 @@ const MonthlyHistoricalOverallLots = () => {
         <DialogTitle sx={{ fontWeight: 700 }}>Filter Values by Month</DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            Select a month, then set a minimum and/or maximum. Only cells in that month whose value
-            falls within the range are kept; others are hidden.
+            Select a start and end month, then set a minimum and/or maximum. Only cells within that
+            month range whose value falls within the range are kept; others are hidden.
           </Typography>
-          <Autocomplete
-            options={monthHeaderKeys}
-            value={modalMonth || null}
-            onChange={(e, v) => handleModalMonthChange(v)}
-            getOptionLabel={(o) => formatMonthCol(o)}
-            isOptionEqualToValue={(o, v) => o === v}
-            renderInput={(params) => <TextField {...params} label="Month" size="small" />}
-            ListboxProps={{ style: { maxHeight: 260 } }}
-            sx={{ mb: 2 }}
-          />
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <Autocomplete
+              fullWidth
+              options={monthHeaderKeys.filter(m => !modalEndMonth || m <= modalEndMonth)}
+              value={modalStartMonth || null}
+              onChange={(e, v) => setModalStartMonth(v || '')}
+              getOptionLabel={(o) => formatMonthCol(o)}
+              isOptionEqualToValue={(o, v) => o === v}
+              renderInput={(params) => <TextField {...params} label="Start Month" size="small" />}
+              ListboxProps={{ style: { maxHeight: 260 } }}
+            />
+            <Autocomplete
+              fullWidth
+              options={monthHeaderKeys.filter(m => !modalStartMonth || m >= modalStartMonth)}
+              value={modalEndMonth || null}
+              onChange={(e, v) => setModalEndMonth(v || '')}
+              getOptionLabel={(o) => formatMonthCol(o)}
+              isOptionEqualToValue={(o, v) => o === v}
+              renderInput={(params) => <TextField {...params} label="End Month" size="small" />}
+              ListboxProps={{ style: { maxHeight: 260 } }}
+            />
+          </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
               label="Min" type="number" size="small" fullWidth
               value={modalMin} onChange={(e) => setModalMin(e.target.value)}
-              inputProps={{ step: '0.0001' }} disabled={!modalMonth}
+              inputProps={{ step: '0.0001' }} disabled={!modalStartMonth && !modalEndMonth}
             />
             <TextField
               label="Max" type="number" size="small" fullWidth
               value={modalMax} onChange={(e) => setModalMax(e.target.value)}
-              inputProps={{ step: '0.0001' }} disabled={!modalMonth}
+              inputProps={{ step: '0.0001' }} disabled={!modalStartMonth && !modalEndMonth}
             />
           </Box>
 
@@ -800,7 +839,7 @@ const MonthlyHistoricalOverallLots = () => {
           </Button>
           <Box sx={{ flex: 1 }} />
           <Button onClick={closeMonthValueModal} color="inherit">Close</Button>
-          <Button variant="contained" onClick={handleApplyMonthValueFilter} disabled={!modalMonth}>
+          <Button variant="contained" onClick={handleApplyMonthValueFilter} disabled={!modalStartMonth && !modalEndMonth}>
             Apply
           </Button>
         </DialogActions>

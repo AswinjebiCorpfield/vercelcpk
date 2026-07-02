@@ -115,7 +115,7 @@ const NCLotRankBar = () => {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [search, setSearch] = useState('');
     const [order, setOrder] = useState('desc');
-    const [orderBy, setOrderBy] = useState('PPK_NC_Count');
+    const [orderBy, setOrderBy] = useState('');
     useEffect(() => { setPage(0); }, [materialNCData]);
     const [tvcNCData, setTvcNCData] = useState([]);
     const [tatNCData, setTatNCData] = useState([]);
@@ -229,6 +229,7 @@ useEffect(() => {
           || tat.toLowerCase().includes(q);
       });
     }
+    if (!orderBy) return rows;
     const sorted = [...rows].sort((a, b) => {
       const va = materialSortValue(a, orderBy);
       const vb = materialSortValue(b, orderBy);
