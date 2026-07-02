@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import TableSortLabel from '@mui/material/TableSortLabel';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, CircularProgress, circularProgressClasses, useTheme } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, CircularProgress, circularProgressClasses, useTheme, TextField, InputAdornment, TablePagination } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import axios from 'axios';
@@ -13,6 +15,15 @@ import dayjs from 'dayjs';
 import * as d3 from 'd3-array';
 // 新增组件：无row.LotNo时自动查找所有individual lot
 import { useNavigate } from 'react-router-dom';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import GroupsIcon from '@mui/icons-material/Groups';
+import MemoryIcon from '@mui/icons-material/Memory';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
+import StraightenIcon from '@mui/icons-material/Straighten';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import StorageIcon from '@mui/icons-material/Storage';
+import InsightsIcon from '@mui/icons-material/Insights';
+import QueryStatsIcon from '@mui/icons-material/QueryStats';
 
 // 最简 Minitab 正态曲线（100% 正确）
 const generateMinitabNormalCurve = (values, bins = 20) => {
@@ -216,7 +227,7 @@ const HistogramComponent = ({ tableData, LSL, USL }) => {
         },
         width: plotWidth,
         height: plotHeight,
-        margin: { t: 60, l: 100, r: 80, b: 100 },
+        margin: { t: 60, l: 70, r: 30, b: 100 },
         shapes,
         annotations,
     };
@@ -280,6 +291,47 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData }
       return pass;
     }).sort((a, b) => last7(a.LotNo).localeCompare(last7(b.LotNo)));
   }, [lotData, pieFilter]);
+
+  const [search, setSearch] = useState('');
+  const [orderBy, setOrderBy] = useState('');
+  const [order, setOrder] = useState('asc');
+
+  const handleSort = (col) => {
+    if (orderBy === col) {
+      setOrder(order === 'asc' ? 'desc' : 'asc');
+    } else {
+      setOrderBy(col);
+      setOrder('asc');
+    }
+  };
+
+  // Search (by LotNo) + column sort applied on top of the pie-filtered data.
+  const displayLotData = React.useMemo(() => {
+    let data = filteredLotData;
+    const q = search.trim().toLowerCase();
+    if (q) data = data.filter(item => String(item.LotNo || '').toLowerCase().includes(q));
+    if (orderBy) {
+      const numeric = ['NO_OF_DATA', 'CPK', 'CP'];
+      data = [...data].sort((a, b) => {
+        let av = a[orderBy];
+        let bv = b[orderBy];
+        if (orderBy === 'MeasDate') {
+          av = new Date(av).getTime() || 0;
+          bv = new Date(bv).getTime() || 0;
+          return order === 'asc' ? av - bv : bv - av;
+        }
+        if (numeric.includes(orderBy)) {
+          av = parseFloat(av); bv = parseFloat(bv);
+          if (isNaN(av)) av = -Infinity;
+          if (isNaN(bv)) bv = -Infinity;
+          return order === 'asc' ? av - bv : bv - av;
+        }
+        av = String(av ?? ''); bv = String(bv ?? '');
+        return order === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+    }
+    return data;
+  }, [filteredLotData, search, orderBy, order]);
 
   return (
     <>
@@ -363,6 +415,20 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData }
             >
               Download Subsample Data
             </CsvExportButton>
+            <TextField
+              size="small"
+              placeholder="Search lot no…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ minWidth: 220 }}
+            />
         </Box>
       </Box>
       {loading ? (
@@ -372,17 +438,29 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData }
             <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 'bold' }}>LotNo</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>MeasDate</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>No of Data</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>CarburizingFurnace</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>TemperingFurnace</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>CPK</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>CP</TableCell>
+                  {[
+                    { id: 'LotNo', label: 'LotNo' },
+                    { id: 'MeasDate', label: 'MeasDate' },
+                    { id: 'NO_OF_DATA', label: 'No of Data' },
+                    { id: 'CarbonizingFurnace', label: 'CarburizingFurnace' },
+                    { id: 'TemperingFurnace', label: 'TemperingFurnace' },
+                    { id: 'CPK', label: 'CPK' },
+                    { id: 'CP', label: 'CP' },
+                  ].map((col) => (
+                    <TableCell key={col.id} sx={{ fontWeight: 'bold' }} sortDirection={orderBy === col.id ? order : false}>
+                      <TableSortLabel
+                        active={orderBy === col.id}
+                        direction={orderBy === col.id ? order : 'asc'}
+                        onClick={() => handleSort(col.id)}
+                      >
+                        {col.label}
+                      </TableSortLabel>
+                    </TableCell>
+                  ))}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredLotData.length > 0 ? filteredLotData.map((item, idx) => (
+                {displayLotData.length > 0 ? displayLotData.map((item, idx) => (
                   <TableRow key={idx}
                     style={{ cursor: 'pointer' }}
                     onClick={() => {
@@ -464,7 +542,7 @@ const HistogramAndPie = ({
             if (containerRef.current) {
                 const width = containerRef.current.offsetWidth;
                 setPlotWidth(width);
-                setPlotHeight(Math.round(width * 0.6));
+                setPlotHeight(displayPP ? Math.round(width * 0.72) : Math.min(Math.round(width * 0.42), 360));
             }
         }
         handleResize();
@@ -593,7 +671,7 @@ const histogramBinConfig = React.useMemo(() => {
         },
         width: plotWidth,
         height: plotHeight,
-        margin: { t: 60, l: 100, r: 80, b: 100 },
+        margin: { t: 60, l: 70, r: 30, b: 100 },
         shapes,
         annotations,
     };
@@ -633,23 +711,29 @@ const histogramBinConfig = React.useMemo(() => {
             {displayPP && showPies && (
             <Box sx={{ mt: showHistogram ? 3 : 0, display: 'flex', flexDirection: 'row', gap: 3, flexWrap: 'wrap' }}>
                 {/* CarbonizingFurnace Pie */}
-                <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', gap: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                    <Box sx={{ position: 'relative', width: 160, height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <PieChart
                             series={[{
                                 data: carbPieData.length ? carbPieData : [{ label: 'No Data', value: 1, color: '#E0E0E0' }],
                                 highlightScope: { faded: 'global', highlighted: 'item' },
                                 cornerRadius: 6,
                                 paddingAngle: 2,
-                                innerRadius: 0,
-                                outerRadius: 90,
-                                cx: 100,
-                                cy: 100,
+                                innerRadius: 48,
+                                outerRadius: 74,
+                                cx: 80,
+                                cy: 80,
                             }]}
                             legend={{ hidden: true }}
-                            width={200}
-                            height={Math.max(200, carbPieData.length * 40)}
+                            width={160}
+                            height={160}
                         />
+                        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                          <Typography sx={{ fontWeight: 'bold', fontSize: 26, lineHeight: 1 }}>
+                            {carbPieData.reduce((s, d) => s + (Number(d.value) || 0), 0)}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>(100%)</Typography>
+                        </Box>
                     </Box>
                     <Box sx={{
                         display: 'flex',
@@ -721,23 +805,29 @@ const histogramBinConfig = React.useMemo(() => {
                     </Box>
                 </Box>
                 {/* TemperingFurnace Pie */}
-                <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', gap: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                    <Box sx={{ position: 'relative', width: 160, height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <PieChart
                             series={[{
                                 data: tempPieData.length ? tempPieData : [{ label: 'No Data', value: 1, color: '#E0E0E0' }],
                                 highlightScope: { faded: 'global', highlighted: 'item' },
                                 cornerRadius: 6,
                                 paddingAngle: 2,
-                                innerRadius: 0,
-                                outerRadius: 90,
-                                cx: 100,
-                                cy: 100,
+                                innerRadius: 48,
+                                outerRadius: 74,
+                                cx: 80,
+                                cy: 80,
                             }]}
                             legend={{ hidden: true }}
-                            width={200}
-                            height={Math.max(200, tempPieData.length * 40)}
+                            width={160}
+                            height={160}
                         />
+                        <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                          <Typography sx={{ fontWeight: 'bold', fontSize: 26, lineHeight: 1 }}>
+                            {tempPieData.reduce((s, d) => s + (Number(d.value) || 0), 0)}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>(100%)</Typography>
+                        </Box>
                     </Box>
                     <Box sx={{
                         display: 'flex',
@@ -865,6 +955,51 @@ const OverallLotsDistributionTable = () => {
     });
   }, [rawTableData, pieFilter]);
 
+  // Subsample Information table: search + sort + pagination
+  const [subSearch, setSubSearch] = useState('');
+  const [subOrderBy, setSubOrderBy] = useState('');
+  const [subOrder, setSubOrder] = useState('asc');
+  const [subPage, setSubPage] = useState(0);
+  const [subRowsPerPage, setSubRowsPerPage] = useState(10);
+
+  const handleSubSort = (col) => {
+    if (subOrderBy === col) setSubOrder(subOrder === 'asc' ? 'desc' : 'asc');
+    else { setSubOrderBy(col); setSubOrder('asc'); }
+    setSubPage(0);
+  };
+
+  const subsampleProcessed = React.useMemo(() => {
+    let data = [...filteredTableData];
+    const q = subSearch.trim().toLowerCase();
+    if (q) {
+      data = data.filter(item =>
+        ['LotNo', 'CarbonizingFurnace', 'TemperingFurnace', 'SubSampleNo', 'MeasValue', 'MeasDate']
+          .some(k => String(item[k] ?? '').toLowerCase().includes(q))
+      );
+    }
+    if (subOrderBy) {
+      const numeric = ['SubSampleNo', 'MeasValue'];
+      data.sort((a, b) => {
+        let av = a[subOrderBy];
+        let bv = b[subOrderBy];
+        if (subOrderBy === 'MeasDate') {
+          av = new Date(av).getTime() || 0; bv = new Date(bv).getTime() || 0;
+          return subOrder === 'asc' ? av - bv : bv - av;
+        }
+        if (numeric.includes(subOrderBy)) {
+          av = parseFloat(av); bv = parseFloat(bv);
+          if (isNaN(av)) av = -Infinity; if (isNaN(bv)) bv = -Infinity;
+          return subOrder === 'asc' ? av - bv : bv - av;
+        }
+        av = String(av ?? ''); bv = String(bv ?? '');
+        return subOrder === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+    } else {
+      data.sort((a, b) => a.LotNo !== b.LotNo ? a.LotNo.localeCompare(b.LotNo) : (a.SubSampleNo || 0) - (b.SubSampleNo || 0));
+    }
+    return data;
+  }, [filteredTableData, subSearch, subOrderBy, subOrder]);
+
   // 有效数据（MeasValue 合法），与 Python NO_OF_DATA 基准一致，用于 pie 计算
   const validTableData = React.useMemo(() => {
     return rawTableData.filter(item => {
@@ -940,6 +1075,21 @@ const OverallLotsDistributionTable = () => {
   const statsLSLDisplay = isVisibleLSL(statsLSLParsed) ? statsLSLRaw : '-';
   const statsUSLDisplay = isVisibleUSL(statsUSLParsed) ? statsUSLRaw : '-';
 
+  const formattedPeriod = Period
+    ? (typeof Period === 'number' || /^\d{6}$/.test(Period)
+        ? (() => {
+            const str = String(Period);
+            const year = str.slice(0, 4);
+            const month = str.slice(4, 6);
+            return `${new Date(`${year}-${month}-01`).toLocaleString('en-US', { month: 'short' })} ${year}`;
+          })()
+        : (Period.length === 7
+            ? `${new Date(Period + '-01').toLocaleString('en-US', { month: 'short' })} ${Period.slice(0, 4)}`
+            : (Period.length === 10
+                ? `${new Date(Period).toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit' })}`
+                : Period)))
+    : '';
+
   return (
     <Box sx={{
         p: { xs: 2, md: 3 },
@@ -951,135 +1101,8 @@ const OverallLotsDistributionTable = () => {
         {/* 左侧块 */}
         <Grid item xs={12} md={6}>
           <Box sx={{ width: '100%', boxSizing: 'border-box' }}>
-            <Grid container spacing={3}>
-              {/* General Information */}
-              <Grid item xs={12} md={8}>
-                <Box sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', height: '100%' }}>
-                  <Typography variant="h6" gutterBottom>
-                    {row?.LotNo ? 'Individual Lot' : 'Dimension'} General Information
-                  </Typography>
-                  {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
-                      <CircularProgress />
-                    </Box>
-                  ) : (
-                  <Grid container spacing={2}>
-                    <Grid item xs={4}>
-                      {row?.LotNo && <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>LotNo:</Typography>}
-                      {Period && <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>Period:</Typography>}
-                      {row?.Dept && <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>Dept:</Typography>}
-                      {row?.MachineId && <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>MachineId:</Typography>}
-                      {row?.MaterialDesc && <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>MaterialDesc:</Typography>}
-                      {row?.DimensionDesc && <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>DimensionDesc:</Typography>}
-                      {row?.CAT && <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>CAT:</Typography>}
-                      {row?.NO_OF_DATA && <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>No Of Data:</Typography>}
-                    </Grid>
-                    <Grid item xs={8}>
-                      {row?.LotNo && (
-                        <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>{row?.LotNo}</Typography>
-                      )}
-                      {Period && (
-                        <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>
-                          {
-                            typeof Period === 'number' || /^\d{6}$/.test(Period)
-                              ? (() => {
-                                  const str = String(Period);
-                                  const year = str.slice(0, 4);
-                                  const month = str.slice(4, 6);
-                                  return `${new Date(`${year}-${month}-01`).toLocaleString('en-US', { month: 'short' })} ${year}`;
-                                })()
-                              : (
-                                  Period.length === 7
-                                    ? `${new Date(Period + '-01').toLocaleString('en-US', { month: 'short' })} ${Period.slice(0, 4)}`
-                                    : (
-                                        Period.length === 10
-                                          ? `${new Date(Period).toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit' })}`
-                                          : Period
-                                      )
-                              )
-                          }
-                        </Typography>
-                      )}
-                      {row?.Dept && (
-                        <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>{row.Dept}</Typography>
-                      )}
-                      {row?.MachineId && (
-                        <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>{row.MachineId}</Typography>
-                      )}
-                      {row?.MaterialDesc && (
-                        <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>{row.MaterialDesc}</Typography>
-                      )}
-                      {row?.DimensionDesc && (
-                        <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>{row.DimensionDesc}</Typography>
-                      )}
-                      {row?.CAT && (
-                        <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>{row.CAT}</Typography>
-                      )}
-                      {row?.NO_OF_DATA && (
-                        <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>
-                          {(pieFilter.CarbonizingFurnace || pieFilter.TemperingFurnace)
-                            ? validFilteredTableData.length
-                            : row.NO_OF_DATA}
-                        </Typography>
-                      )}
-                    </Grid>
-                  </Grid>
-                  )}
-                </Box>
-              </Grid>
-              {/* Statistics */}
-              <Grid item xs={12} md={4}>
-                <Box sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', height: '100%' }}>
-                  <Typography variant="h6" gutterBottom>Statistics</Typography>
-                  {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-                      <CircularProgress />
-                    </Box>
-                  ) : (
-                  <Grid container spacing={1}>
-                    <Grid item xs={7}>
-                      <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>Mean:</Typography>
-                      <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>Standard Deviation:</Typography>
-                      <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>LSL:</Typography>
-                      <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>USL:</Typography>
-                      <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>CPK:</Typography>
-                      { displayPP &&<Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>PPK:</Typography>}
-                      <Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>CP:</Typography>
-                      { displayPP &&<Typography sx={{ color: 'text.secondary', fontWeight: 'normal' }}>PP:</Typography>}
-                    </Grid>
-                    <Grid item xs={5}>
-                      {filteredTableData.length === 0 ? (
-                      <CircularProgress />
-                      ) : (
-                        <>
-                      <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>{metrics?.MeanValue ?? '-'}</Typography>
-                      <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>{metrics?.StdValue ?? '-'}</Typography>
-                      <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>{statsLSLDisplay}</Typography>
-                      <Typography sx={{ textAlign: 'right', fontWeight: 'bold' }}>{statsUSLDisplay}</Typography>
-                      <Typography sx={{ textAlign: 'right', fontWeight: 'bold', color:
-                         metrics?.CPKValue != null && Number(metrics?.CPKValue) <= MAX_NC ? '#F54D41' : 'inherit' }}>{metrics?.CPKValue !== undefined && metrics?.CPKValue !== null && !isNaN(metrics?.CPKValue) ? Number(metrics.CPKValue).toFixed(3) : metrics?.CPKValue ?? '-'}</Typography>
-                      {displayPP && (
-                        <Typography sx={{ textAlign: 'right', fontWeight: 'bold', color:
-                        metrics?.PPKValue != null && Number(metrics?.PPKValue) <= MAX_NC ? '#F54D41' : 'inherit' }}>{metrics?.PPKValue !== undefined && metrics?.PPKValue !== null && !isNaN(metrics?.PPKValue) ? Number(metrics.PPKValue).toFixed(3) : metrics?.PPKValue ?? ''}</Typography>
-                      )}
-                      <Typography sx={{ textAlign: 'right', fontWeight: 'bold', color:
-                        metrics?.CPValue != null &&  Number(metrics?.CPValue) <= MAX_NC ? '#F54D41' : 'inherit' }}>{metrics?.CPValue !== undefined && metrics?.CPValue !== null && !isNaN(metrics?.CPValue) ? Number(metrics.CPValue).toFixed(3) : metrics?.CPValue ?? '-'}</Typography>
-                      {displayPP && (
-                        <Typography sx={{ textAlign: 'right', fontWeight: 'bold', color:
-                        metrics?.PPValue != null &&  Number(metrics?.PPValue) <= MAX_NC ? '#F54D41' : 'inherit'
-                      }}>
-                      {metrics?.PPValue !== undefined && metrics?.PPValue !== null && !isNaN(metrics?.PPValue) ? Number(metrics.PPValue).toFixed(3) : metrics?.PPValue ?? '-'}</Typography>
-                      )}
-                      </>
-                    )}
-                    </Grid>
-                  </Grid>
-                  )}
-                </Box>
-              </Grid>
-            </Grid>
             {/* Histogram */}
-          <Box sx={{ marginTop: 3 }}>
+          <Box sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', height: '100%', boxSizing: 'border-box' }}>
             <Typography variant="h6" gutterBottom>
               Subsample Distribution Histogram
             </Typography>
@@ -1107,12 +1130,101 @@ const OverallLotsDistributionTable = () => {
         </Grid>
         {/* 右侧块 */}
         <Grid item xs={12} md={6}>
-          {row?.LotNo ? (
-          <Box sx={{ width: '100%', boxSizing: 'border-box' }}>
+          {/* General Information + Statistics (top of right column) */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={7}>
+              <Box sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', height: '100%' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                  <InsightsIcon sx={{ color: 'primary.main' }} />
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {row?.LotNo ? 'Individual Lot' : 'Dimension'} General Information
+                  </Typography>
+                </Box>
+                {loading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+                    <CircularProgress />
+                  </Box>
+                ) : (
+                <Box>
+                  {[
+                    row?.LotNo && { icon: <LocalOfferIcon fontSize="small" />, label: 'LotNo', value: row.LotNo },
+                    Period && { icon: <CalendarMonthIcon fontSize="small" />, label: 'Period', value: formattedPeriod },
+                    row?.Dept && { icon: <GroupsIcon fontSize="small" />, label: 'Dept', value: row.Dept },
+                    row?.MachineId && { icon: <MemoryIcon fontSize="small" />, label: 'MachineId', value: row.MachineId },
+                    row?.MaterialDesc && { icon: <Inventory2Icon fontSize="small" />, label: 'MaterialDesc', value: row.MaterialDesc },
+                    row?.DimensionDesc && { icon: <StraightenIcon fontSize="small" />, label: 'DimensionDesc', value: row.DimensionDesc },
+                    row?.CAT && { icon: <LocalOfferIcon fontSize="small" />, label: 'CAT', value: row.CAT },
+                    row?.NO_OF_DATA && { icon: <StorageIcon fontSize="small" />, label: 'No Of Data', value: (pieFilter.CarbonizingFurnace || pieFilter.TemperingFurnace) ? validFilteredTableData.length : row.NO_OF_DATA },
+                  ].filter(Boolean).map((f, i, arr) => (
+                    <Box key={f.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.9, borderBottom: i < arr.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
+                      <Box sx={{ color: 'text.secondary', display: 'flex' }}>{f.icon}</Box>
+                      <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>{f.label}:</Typography>
+                      <Typography sx={{ ml: 'auto', fontWeight: 'bold', fontSize: 14, textAlign: 'right' }}>{f.value}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+                )}
+              </Box>
+            </Grid>
+            <Grid item xs={12} sm={5}>
+              <Box sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', height: '100%' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                  <QueryStatsIcon sx={{ color: 'primary.main' }} />
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Statistics</Typography>
+                </Box>
+                {loading || filteredTableData.length === 0 ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 120 }}><CircularProgress /></Box>
+                ) : (
+                  <Grid container spacing={1}>
+                    {[
+                      { label: 'Mean', value: metrics?.MeanValue ?? '-' },
+                      { label: 'Std Dev', value: metrics?.StdValue ?? '-' },
+                      { label: 'No of Data', value: (pieFilter.CarbonizingFurnace || pieFilter.TemperingFurnace) ? validFilteredTableData.length : (row?.NO_OF_DATA ?? '-') },
+                      { label: 'LSL', value: statsLSLDisplay },
+                      { label: 'USL', value: statsUSLDisplay },
+                      { label: 'Target', value: (isVisibleLSL(statsLSLParsed) && isVisibleUSL(statsUSLParsed)) ? ((statsLSLParsed + statsUSLParsed) / 2) : '-', color: 'success.main' },
+                      { label: 'CPK', value: (metrics?.CPKValue != null && !isNaN(metrics?.CPKValue)) ? Number(metrics.CPKValue).toFixed(3) : (metrics?.CPKValue ?? '-'), color: metrics?.CPKValue != null && Number(metrics?.CPKValue) <= MAX_NC ? '#F54D41' : undefined },
+                      ...(displayPP ? [{ label: 'PPK', value: (metrics?.PPKValue != null && !isNaN(metrics?.PPKValue)) ? Number(metrics.PPKValue).toFixed(3) : (metrics?.PPKValue ?? '-'), color: metrics?.PPKValue != null && Number(metrics?.PPKValue) <= MAX_NC ? '#F54D41' : undefined }] : []),
+                      { label: 'CP', value: (metrics?.CPValue != null && !isNaN(metrics?.CPValue)) ? Number(metrics.CPValue).toFixed(3) : (metrics?.CPValue ?? '-'), color: metrics?.CPValue != null && Number(metrics?.CPValue) <= MAX_NC ? '#F54D41' : undefined },
+                      ...(displayPP ? [{ label: 'PP', value: (metrics?.PPValue != null && !isNaN(metrics?.PPValue)) ? Number(metrics.PPValue).toFixed(3) : (metrics?.PPValue ?? '-'), color: metrics?.PPValue != null && Number(metrics?.PPValue) <= MAX_NC ? '#F54D41' : undefined }] : []),
+                    ].map((s) => (
+                      <Grid item xs={6} key={s.label}>
+                        <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, py: 0.5, px: 1, textAlign: 'center', bgcolor: 'action.hover', height: '100%' }}>
+                          <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 600, lineHeight: 1.3 }}>{s.label}</Typography>
+                          <Typography sx={{ fontWeight: 'bold', fontSize: 16, lineHeight: 1.3, color: s.color || 'text.primary' }}>{s.value}</Typography>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+          {displayPP && filteredTableData.length > 0 && (
+            <Box sx={{ mt: 3, width: '100%', boxSizing: 'border-box', p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+              <Typography variant="h6" gutterBottom>Furnace Distribution</Typography>
+              <HistogramAndPie
+                tableData={filteredTableData}
+                LSL={filteredTableData[0].LSL}
+                USL={filteredTableData[0].USL}
+                displayPP={displayPP}
+                carbPieData={carbPieData}
+                tempPieData={tempPieData}
+                pieFilter={pieFilter}
+                setPieFilter={setPieFilter}
+                showHistogram={false}
+              />
+            </Box>
+          )}
+        </Grid>
+        {row?.LotNo ? (
+        <Grid item xs={12}>
+          <Box sx={{ width: '100%', boxSizing: 'border-box', p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap', mb: 2 }}>
               <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>
                 Subsample Information
               </Typography>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
               <CsvExportButton
               data={filteredTableData.map(item => ({
                 Dept: row?.Dept ?? '',
@@ -1145,47 +1257,61 @@ const OverallLotsDistributionTable = () => {
                 { label: 'CAT', value: row?.CAT || '' },
               ]}
               filename={buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data')}
-              sx={{ flexShrink: 0 }}
+              sx={{ flexShrink: 0, minWidth: 44, px: 1, height: 40 }}
+              title="Download Subsample Data"
             >
-              Download Subsample Data
+              <DownloadIcon fontSize="small" />
             </CsvExportButton>
+            <TextField
+              size="small"
+              placeholder="Search…"
+              value={subSearch}
+              onChange={(e) => { setSubSearch(e.target.value); setSubPage(0); }}
+              InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} /></InputAdornment>) }}
+              sx={{ minWidth: 200, '& .MuiInputBase-root': { height: 40 } }}
+            />
+            </Box>
             </Box>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
                 <CircularProgress />
               </Box>
             ) : (
+              <>
               <TableContainer
                 component={Paper}
                 sx={{
                   width: '100%',
                   maxWidth: '100%',
-                  overflowX: 'auto',
+                  maxHeight: 420,
+                  overflow: 'auto',
                 }}
               >
                 <Table stickyHeader size="small">
                   <colgroup><col style={{ width: 120 }} /><col style={{ width: 90 }} /><col style={{ width: 90 }} /><col style={{ width: 80 }} /><col style={{ width: 90 }} /><col style={{ width: 160 }} /></colgroup>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider', minWidth: 100 }}>LotNo</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider', minWidth: 60 }}>Carburizing Furnace</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider', minWidth: 60 }}>Tempering Furnace</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider', minWidth: 70 }}>SubSample No</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider', minWidth: 80 }}>MeasValue</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider', minWidth: 140 }}>MeasDate</TableCell>
+                      {[
+                        { id: 'LotNo', label: 'LotNo', mw: 100 },
+                        { id: 'CarbonizingFurnace', label: 'Carburizing Furnace', mw: 60 },
+                        { id: 'TemperingFurnace', label: 'Tempering Furnace', mw: 60 },
+                        { id: 'SubSampleNo', label: 'SubSample No', mw: 70 },
+                        { id: 'MeasValue', label: 'MeasValue', mw: 80 },
+                        { id: 'MeasDate', label: 'MeasDate', mw: 140 },
+                      ].map((col) => (
+                        <TableCell key={col.id} sx={{ fontWeight: 'bold', borderBottom: '1px solid', borderColor: 'divider', minWidth: col.mw }} sortDirection={subOrderBy === col.id ? subOrder : false}>
+                          <TableSortLabel active={subOrderBy === col.id} direction={subOrderBy === col.id ? subOrder : 'asc'} onClick={() => handleSubSort(col.id)}>
+                            {col.label}
+                          </TableSortLabel>
+                        </TableCell>
+                      ))}
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {(() => {
-                      // 右侧table也用filteredTableData
-                      const sortedTableData = [...filteredTableData].sort((a, b) => {
-                        if (a.LotNo !== b.LotNo) {
-                          return a.LotNo.localeCompare(b.LotNo);
-                        }
-                        return (a.SubSampleNo || 0) - (b.SubSampleNo || 0);
-                      });
-                      return sortedTableData.length > 0 ? (
-                        sortedTableData.map((item, index) => (
+                    {subsampleProcessed.length > 0 ? (
+                      subsampleProcessed
+                        .slice(subPage * subRowsPerPage, subPage * subRowsPerPage + subRowsPerPage)
+                        .map((item, index) => (
                           <TableRow key={index}>
                             <TableCell>{item.LotNo ?? '-'}</TableCell>
                             <TableCell>{item.CarbonizingFurnace ?? '-'}</TableCell>
@@ -1195,41 +1321,38 @@ const OverallLotsDistributionTable = () => {
                             <TableCell>{dayjs(item.MeasDate).format("MMM D, YYYY") ?? '-'}</TableCell>
                           </TableRow>
                         ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} align="center">
-                            No data available
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })()}
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">
+                          No data available
+                        </TableCell>
+                      </TableRow>
+                    )}
                 </TableBody>
                 </Table>
               </TableContainer>
+              <TablePagination
+                component="div"
+                count={subsampleProcessed.length}
+                page={subPage}
+                onPageChange={(e, p) => setSubPage(p)}
+                rowsPerPage={subRowsPerPage}
+                onRowsPerPageChange={(e) => { setSubRowsPerPage(parseInt(e.target.value, 10)); setSubPage(0); }}
+                rowsPerPageOptions={[10, 25, 50]}
+              />
+              </>
             )}
-          </Box>) : (
-          <Box sx={{ width: '100%', boxSizing: 'border-box' }}>
-            <IndividualLotTableGeneralInfo row={row} Period={Period} pieFilter={pieFilter} subsampleData={filteredTableData} />
-          </Box>)
-        }
-        {/* Furnace distribution pies (relocated here, to the right of the histogram) */}
-        {displayPP && filteredTableData.length > 0 && (
-          <Box sx={{ mt: 3, width: '100%', boxSizing: 'border-box' }}>
-            <Typography variant="h6" gutterBottom>Furnace Distribution</Typography>
-            <HistogramAndPie
-              tableData={filteredTableData}
-              LSL={filteredTableData[0].LSL}
-              USL={filteredTableData[0].USL}
-              displayPP={displayPP}
-              carbPieData={carbPieData}
-              tempPieData={tempPieData}
-              pieFilter={pieFilter}
-              setPieFilter={setPieFilter}
-              showHistogram={false}
-            />
           </Box>
-        )}
-      </Grid>
+        </Grid>) : null
+        }
+      {/* Individual Lot List — full-width row at the bottom */}
+      {!row?.LotNo && (
+        <Grid item xs={12}>
+          <Box sx={{ width: '100%', boxSizing: 'border-box', p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+            <IndividualLotTableGeneralInfo row={row} Period={Period} pieFilter={pieFilter} subsampleData={filteredTableData} />
+          </Box>
+        </Grid>
+      )}
       </Grid>
     </Box>
   );
