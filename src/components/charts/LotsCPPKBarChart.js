@@ -436,9 +436,6 @@ useEffect(() => {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: filterOpen ? 1.5 : 0 }}>
-          <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-            Filters
-          </Typography>
           <Box sx={{ display: 'inline-flex', p: '3px', borderRadius: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
             {[['Count', 'Count'], ['Percent', 'Percent']].map(([val, label]) => (
               <Box key={val} onClick={() => setDisplayMode(val)} sx={{
@@ -475,6 +472,7 @@ useEffect(() => {
             
             return (
               <Autocomplete
+                size="small"
                 key={key}
                 multiple={isCAT}
                 options={
@@ -514,6 +512,7 @@ useEffect(() => {
           })}
         
         <Autocomplete
+          size="small"
           options={startMonthOptions}
           value={filters.StartMonth || getRecent12MonthsStart()}
           onChange={(e, value) => {
@@ -528,7 +527,7 @@ useEffect(() => {
               {...params}
               label="Start Month"
               variant="outlined"
-              sx={{ minWidth: 160, flex: '1 1 160px' }}
+              sx={{ minWidth: 145, flex: '0 1 145px' }}
               placeholder="All"
               InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
             />
@@ -548,6 +547,7 @@ useEffect(() => {
           renderTags={() => null}
         />
         <Autocomplete
+          size="small"
           options={endMonthOptions}
           value={filters.EndMonth || getCurrentMonth()}
           onChange={(e, value) => {
@@ -562,7 +562,7 @@ useEffect(() => {
               {...params}
               label="End Month"
               variant="outlined"
-              sx={{ minWidth: 160, flex: '1 1 160px' }}
+              sx={{ minWidth: 145, flex: '0 1 145px' }}
               placeholder="All"
               InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
             />
@@ -598,9 +598,9 @@ useEffect(() => {
         {finalDatasets.map((dataset, index) => (
           <Card elevation={0} sx={{ mt: 0, width: '100%', p: 2, mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }} key={index}>
             <Grid container direction="row" spacing={2}>
-              <Grid item xs={12} md={3} sx={{ minWidth: 200 }}>
+              <Grid item xs={12} md={2} sx={{ minWidth: 200, maxWidth: { md: 200 } }}>
                 <Box sx={{ width: '100%', px: 1.5, py: 1 }}>
-                  <Typography variant="h3" sx={{ fontWeight: 800, textTransform: 'uppercase', lineHeight: 1.1 }}>
+                  <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
                     {dataset.title}
                   </Typography>
                   <Typography sx={{ fontSize: 13, color: 'text.secondary', fontWeight: 600, mb: 1.5 }}>
@@ -620,7 +620,7 @@ useEffect(() => {
                   </Stack>
                 </Box>
               </Grid>
-              <Grid item xs={12} md={9} sx={{ minWidth: 400, overflow: 'auto' }}>
+              <Grid item xs={12} md sx={{ minWidth: 400, overflow: 'auto', flexGrow: 1, flexBasis: 0, maxWidth: 'none' }}>
                 <Typography
                   variant="body2"
                   sx={{ color: 'primary.main', fontStyle: 'italic', mb: 1, ml: 1, letterSpacing: 0.3 }}

@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { BarChart } from '@mui/x-charts/BarChart';
 import axios from 'axios';
-import { Box, Card, CardContent, CircularProgress, Grid, Typography, TextField, Button, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, TableSortLabel, InputAdornment } from '@mui/material';
+import { Box, Card, CardContent, CircularProgress, Grid, Typography, TextField, Button, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, TableSortLabel, InputAdornment, Tooltip, IconButton } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
 import Autocomplete from '@mui/material/Autocomplete';
 import './NCLotRankBar.css';
 import { useValue } from '../../context/ContextProvider';
@@ -373,9 +374,6 @@ useEffect(() => {
                         bgcolor: 'background.paper',
                     }}
                 >
-                    <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.6, alignSelf: 'center', mr: 0.5 }}>
-                        Filters
-                    </Typography>
                     {Object.keys(availableOptions)
                         .filter(key => key !== 'StartMonth' && key !== 'EndMonth')
                         .map((key) => {
@@ -384,6 +382,7 @@ useEffect(() => {
                             
                             return (
                                 <Autocomplete
+                                    size="small"
                                     key={key}
                                     multiple={isCAT}
                                     options={
@@ -417,6 +416,7 @@ useEffect(() => {
                             );
                         })}
                 <Autocomplete
+                    size="small"
                     options={startMonthOptions}
                     value={filters.StartMonth || getRecent12MonthsStart()}
                     onChange={(e, value) => {
@@ -431,7 +431,7 @@ useEffect(() => {
                             {...params}
                             label="Start Month"
                             variant="outlined"
-                            sx={{ minWidth: 160, flex: '1 1 160px' }}
+                            sx={{ minWidth: 145, flex: '0 1 145px' }}
                             placeholder="All"
                             InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
                         />
@@ -451,6 +451,7 @@ useEffect(() => {
                     renderTags={() => null}
                 />
                 <Autocomplete
+                    size="small"
                     options={endMonthOptions}
                     value={filters.EndMonth || getCurrentMonth()}
                     onChange={(e, value) => {
@@ -465,7 +466,7 @@ useEffect(() => {
                             {...params}
                             label="End Month"
                             variant="outlined"
-                            sx={{ minWidth: 160, flex: '1 1 160px' }}
+                            sx={{ minWidth: 145, flex: '0 1 145px' }}
                             placeholder="All"
                             InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
                         />
@@ -484,9 +485,14 @@ useEffect(() => {
                     }}
                     renderTags={() => null}
                 />
-                    <Button variant="outlined" size="small" color="secondary" onClick={handleClearFilters} sx={{ ml: 'auto', fontSize: 12.5, fontWeight: 700, textTransform: 'none', alignSelf: 'center' }}>
-                        Clear
-                    </Button>
+                    <Tooltip title="Clear all filters">
+                        <IconButton
+                            onClick={handleClearFilters}
+                            sx={{ ml: 'auto', alignSelf: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, color: 'text.secondary', '&:hover': { color: 'error.main', borderColor: 'error.main' } }}
+                        >
+                            <FilterAltOffIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
                 </Box>
             </Grid>
             {/* Content area */}

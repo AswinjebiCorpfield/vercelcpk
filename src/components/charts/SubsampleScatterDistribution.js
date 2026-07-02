@@ -849,11 +849,12 @@ const SubsampleScatterDistribution = () => {
         slotProps={{
           textField: {
             size: 'small',
-            sx: { minWidth: 200, fontSize: 13 },
+            sx: { minWidth: 200, fontSize: 13, '& .MuiInputBase-root': { height: 40 } },
             InputLabelProps: { style: { fontSize: 13 } },
-            inputProps: { style: { fontSize: 15 } },
+            inputProps: { style: { fontSize: 13 } },
             placeholder: 'MM/DD/YYYY',
           },
+          openPickerButton: { size: 'small' },
         }}
         sx={{ fontSize: 13 }}
         closeOnSelect
@@ -871,19 +872,20 @@ const SubsampleScatterDistribution = () => {
         slotProps={{
           textField: {
             size: 'small',
-            sx: { minWidth: 200, fontSize: 13 },
+            sx: { minWidth: 200, fontSize: 13, '& .MuiInputBase-root': { height: 40 } },
             InputLabelProps: { style: { fontSize: 13 } },
-            inputProps: { style: { fontSize: 15 } },
+            inputProps: { style: { fontSize: 13 } },
             placeholder: 'MM/DD/YYYY',
           },
+          openPickerButton: { size: 'small' },
         }}
         sx={{ fontSize: 13 }}
         closeOnSelect
       />
       <Button
         variant="outlined"
-        size="large"
-        sx={{ ml: 2, fontSize: 13, height: 48, px: 3 }}
+        size="small"
+        sx={{ ml: 2, fontSize: 13, height: 40, px: 3 }}
         onClick={() => setDateRange([null, null])}
       >Clear</Button>
     </Box>

@@ -1,13 +1,18 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Typography, Grid, CircularProgress, Button } from '@mui/material';
+import { Typography, Grid, CircularProgress, Button, Tooltip, IconButton, TextField, Popover, Stack, InputAdornment, Divider } from '@mui/material';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import CloseIcon from '@mui/icons-material/Close';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import QueryStatsIcon from '@mui/icons-material/QueryStats';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import { metricColor } from '../../utils/metricFormat';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import Slider from '@mui/material/Slider';
 import dayjs from 'dayjs';
 import 'dayjs/locale/en';
@@ -22,7 +27,7 @@ import { TimeSeriesContext } from '../../context/TimeSeriesContext';
 
 const PlotlyComponent = createPlotlyComponent(Plotly);
 // (SLIDER_WIDTH floor removed — layout is now fluid/responsive)
-const CHART_HEIGHT = 520;
+const CHART_HEIGHT = 560;
 
 const PIE_COLORS = [
   '#4FC3F7', '#81C784', '#FFD54F', '#FF8A65', '#BA68C8', '#F06292', '#FFF176', '#AED581', '#9575CD', '#64B5F6'
@@ -108,6 +113,17 @@ function ChartBlock({
   const theme = useTheme();
   const axisTextColor = theme.palette.text.primary;
   const gridColor = theme.palette.divider;
+  // Single combined date-range field: click opens a popover holding the two pickers.
+  const [dateAnchorEl, setDateAnchorEl] = useState(null);
+  const dateRangeDisplay = (() => {
+    const fmt = (d) => (d ? dayjs(d, 'MM/DD/YYYY').format('MMM DD, YYYY') : '');
+    const s = fmt(dateRange[0]);
+    const e = fmt(dateRange[1]);
+    if (s && e) return `${s} – ${e}`;
+    if (s) return `${s} – …`;
+    if (e) return `… – ${e}`;
+    return '';
+  })();
   // 加载期间锁定页面滚动，避免出现多余的滚动条（固定遮罩已覆盖视口）
   // 同时锁定 <html> 和 <body>：很多浏览器的视口滚动条由 documentElement 控制
   useEffect(() => {
@@ -763,7 +779,6 @@ function ChartBlock({
                 width: '100%',
                 boxSizing: 'border-box',
               }}>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>{title}</Typography>
             {/* Slider（range filter）排在 date picker 之后：order 2 */}
             <Box sx={{ width: '100%', position: 'relative', px: 3, pb: 1, order: 2 }}>
               {/* 顶部两端日期标签 */}
@@ -779,10 +794,10 @@ function ChartBlock({
                   alignItems: 'flex-end',
                 }}
               >
-                <Typography variant="body1" sx={{ fontSize: 13, color: 'white', ml: '6px', mb: '-66px' }}>
+                <Typography variant="body1" sx={{ fontSize: 13, color: 'text.primary', ml: '6px', mb: '-66px' }}>
                   {sliderDatesDisplay[minSlider]}
                 </Typography>
-                <Typography variant="body1" sx={{ fontSize: 13, color: 'white', mr: '6px', mb: '-66px' }}>
+                <Typography variant="body1" sx={{ fontSize: 13, color: 'text.primary', mr: '6px', mb: '-66px' }}>
                   {sliderDatesDisplay[maxSlider]}
                 </Typography>
               </Box>
@@ -804,10 +819,12 @@ function ChartBlock({
                   width: '100%',
                   mt: 2,
                   mb: 2,
-                  height: 12,
+                  height: 6,
+                  '& .MuiSlider-rail': { height: 6 },
+                  '& .MuiSlider-track': { height: 6 },
                   '& .MuiSlider-thumb': {
-                    width: 32,
-                    height: 32,
+                    width: 20,
+                    height: 20,
                   },
                   '& .MuiSlider-valueLabel': {
                     fontSize: 13,
@@ -825,48 +842,97 @@ function ChartBlock({
             {/* Date Range（date picker module）排在 range filter 之前：order 1 */}
             <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mt: 1, order: 1 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Date Range:</Typography>
-                <DatePicker
-                  label="Start Date"
-                  views={['year', 'month', 'day']}
-                  value={dateRange[0] ? dayjs(dateRange[0], 'MM/DD/YYYY') : null}
-                  onChange={val => setDateRange([val ? val.format('MM/DD/YYYY') : null, dateRange[1]])}
-                  shouldDisableDate={date => shouldDisableDateKeepSelected(date, dateRange[0])}
-                  shouldDisableYear={year => shouldDisableYearKeepSelected(year, dateRange[0])}
-                  shouldDisableMonth={month => shouldDisableMonthKeepSelected(month, dateRange[0])}
-                  format="MMM DD, YYYY"
-                  slotProps={{ textField: { sx: { minWidth: 160 } } }}
-                  closeOnSelect
+                <Typography variant="h4" sx={{ fontWeight: 'bold', whiteSpace: 'nowrap', mr: 1 }}>{title}</Typography>
+                <TextField
+                  size="small"
+                  value={dateRangeDisplay}
+                  placeholder="All dates"
+                  onClick={e => setDateAnchorEl(e.currentTarget)}
+                  InputProps={{
+                    readOnly: true,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <CalendarMonthIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (dateRange[0] || dateRange[1]) ? (
+                      <InputAdornment position="end">
+                        <Tooltip title="Clear date range">
+                          <IconButton
+                            size="small"
+                            onClick={e => { e.stopPropagation(); setDateRange([null, null]); }}
+                            sx={{ p: 0.25, color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </InputAdornment>
+                    ) : null,
+                  }}
+                  sx={{ flex: '0 0 auto', width: 300, ml: 'auto', '& .MuiInputBase-root': { height: 40, cursor: 'pointer' }, '& input': { cursor: 'pointer' } }}
                 />
-                <Typography variant="h6" sx={{ whiteSpace: 'nowrap' }}>to</Typography>
-                <DatePicker
-                  label="End Date"
-                  views={['year', 'month', 'day']}
-                  value={dateRange[1] ? dayjs(dateRange[1], 'MM/DD/YYYY') : null}
-                  onChange={val => setDateRange([dateRange[0], val ? val.format('MM/DD/YYYY') : null])}
-                  shouldDisableDate={date => shouldDisableDateKeepSelected(date, dateRange[1])}
-                  shouldDisableYear={year => shouldDisableYearKeepSelected(year, dateRange[1])}
-                  shouldDisableMonth={month => shouldDisableMonthKeepSelected(month, dateRange[1])}
-                  format="MMM DD, YYYY"
-                  slotProps={{ textField: { sx: { minWidth: 160 } } }}
-                  closeOnSelect
-                />
-                <Button
-                  variant="outlined"
-                  sx={{ ml: 1, fontSize: 14, px: 2.5, whiteSpace: 'nowrap' }}
-                  onClick={() => setDateRange([null, null])}
+                <Popover
+                  open={Boolean(dateAnchorEl)}
+                  anchorEl={dateAnchorEl}
+                  onClose={() => setDateAnchorEl(null)}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
                 >
-                  Clear
-                </Button>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ p: 1.5 }}>
+                    <Box>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', textAlign: 'center' }}>Start Date</Typography>
+                      <DateCalendar
+                        views={['year', 'month', 'day']}
+                        value={dateRange[0] ? dayjs(dateRange[0], 'MM/DD/YYYY') : null}
+                        onChange={val => setDateRange([val ? val.format('MM/DD/YYYY') : null, dateRange[1]])}
+                        shouldDisableDate={date => shouldDisableDateKeepSelected(date, dateRange[0])}
+                        shouldDisableYear={year => shouldDisableYearKeepSelected(year, dateRange[0])}
+                        shouldDisableMonth={month => shouldDisableMonthKeepSelected(month, dateRange[0])}
+                      />
+                    </Box>
+                    <Box>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', textAlign: 'center' }}>End Date</Typography>
+                      <DateCalendar
+                        views={['year', 'month', 'day']}
+                        value={dateRange[1] ? dayjs(dateRange[1], 'MM/DD/YYYY') : null}
+                        onChange={val => setDateRange([dateRange[0], val ? val.format('MM/DD/YYYY') : null])}
+                        shouldDisableDate={date => shouldDisableDateKeepSelected(date, dateRange[1])}
+                        shouldDisableYear={year => shouldDisableYearKeepSelected(year, dateRange[1])}
+                        shouldDisableMonth={month => shouldDisableMonthKeepSelected(month, dateRange[1])}
+                      />
+                    </Box>
+                  </Stack>
+                </Popover>
+                <Box>
+                  {/* BRD SC6: "Retrieve raw data" removed; keep only "Download Raw Data". */}
+                  <CsvExportButton
+                    data={exportData}
+                    headers={popupHeaders}
+                    filename={buildExportFilename(generalInfo.MaterialDesc, title && title.includes('HRA') ? 'HRA' : title && title.includes('HRC') ? 'HRC' : 'Subsample')}
+                    generalInfo={[
+                      { label: 'Report', value: (title || 'Subsample') + ' Scattered Subsample Distribution' },
+                      { label: 'Dept', value: generalInfo.Dept || '' },
+                      { label: 'MachineId', value: generalInfo.MachineId || '' },
+                      { label: 'MaterialDesc', value: generalInfo.MaterialDesc || '' },
+                      { label: 'DimensionDesc', value: generalInfo.DimensionDesc || '' },
+                      { label: 'CAT', value: generalInfo.CAT || '' },
+                      { label: 'PP', value: statisticsToShow?.PPValue ?? '' },
+                      { label: 'PPK', value: statisticsToShow?.PPKValue ?? '' },
+                    ]}
+                    size="small"
+                    sx={{ height: 40, fontSize: 13, whiteSpace: 'nowrap' }}
+                  >
+                    Download Raw Data
+                  </CsvExportButton>
+                </Box>
               </Box>
             </LocalizationProvider>
             </Box>
           </Grid>
         )}
 
-        {/* 内容卡片：图表 + 信息区包裹在统一卡片中 */}
+        {/* 内容区：图表 / 炉次 / 信息各自独立卡片 */}
         <Grid item xs={12} sx={{ width: '100%' }}>
-          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', p: 2, width: '100%', boxSizing: 'border-box' }}>
+          <Box sx={{ width: '100%', boxSizing: 'border-box' }}>
             {(!data || data.length === 0) ? (
               <Box sx={{ width: '100%', minHeight: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, py: 4 }}>
                 <Typography variant="h6" sx={{ color: 'text.secondary' }}>No data for the selected range</Typography>
@@ -881,15 +947,15 @@ function ChartBlock({
           md={8}
           sx={{
             minWidth: 0,
-            width: '100%',
-            maxWidth: '100%',
             overflow: 'auto',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'stretch',
+            order: { md: 0 },
           }}
         >
-          <Box sx={{ width: '100%' }}>
+          <Box sx={{ width: '100%', height: '100%', border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: 2, boxSizing: 'border-box', display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, alignItems: 'stretch' }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
             <PlotlyComponent
               data={[
                 // Scatter plot (左侧)
@@ -987,7 +1053,7 @@ function ChartBlock({
                 width: undefined,
                 height: CHART_HEIGHT,
                 autosize: true,
-                margin: { t: 40, l: 100, r: 120, b: 130 },
+                margin: { t: 40, l: 60, r: 30, b: 130 },
                 shapes: [
                   ...(LSL !== null
                     ? [
@@ -1029,6 +1095,7 @@ function ChartBlock({
                           yref: 'y',
                           text: 'LSL',
                           showarrow: false,
+                          yshift: -12,
                           font: { color: '#F54D41', size: 14 },
                         },
                       ]
@@ -1042,6 +1109,7 @@ function ChartBlock({
                           yref: 'y',
                           text: 'USL',
                           showarrow: false,
+                          yshift: 12,
                           font: { color: '#F54D41', size: 14 },
                         },
                       ]
@@ -1100,26 +1168,124 @@ function ChartBlock({
                 }
               }}
             />
-            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', mt: 2 }}>
-              {/* BRD SC6: "Retrieve raw data" removed; keep only "Download Raw Data". */}
-              <CsvExportButton
-                data={exportData}
-                headers={popupHeaders}
-                filename={buildExportFilename(generalInfo.MaterialDesc, title && title.includes('HRA') ? 'HRA' : title && title.includes('HRC') ? 'HRC' : 'Subsample')}
-                generalInfo={[
-                  { label: 'Report', value: (title || 'Subsample') + ' Scattered Subsample Distribution' },
-                  { label: 'Dept', value: generalInfo.Dept || '' },
-                  { label: 'MachineId', value: generalInfo.MachineId || '' },
-                  { label: 'MaterialDesc', value: generalInfo.MaterialDesc || '' },
-                  { label: 'DimensionDesc', value: generalInfo.DimensionDesc || '' },
-                  { label: 'CAT', value: generalInfo.CAT || '' },
-                  { label: 'PP', value: statisticsToShow?.PPValue ?? '' },
-                  { label: 'PPK', value: statisticsToShow?.PPKValue ?? '' },
-                ]}
-                sx={{ maxWidth: 400, fontSize: 22 }}
-              >
-                Download Raw Data
-              </CsvExportButton>
+            </Box>
+            <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' } }} />
+            <Box sx={{ flexShrink: 0, width: { xs: '100%', md: 210 }, display: 'flex', flexDirection: 'column' }}>
+              <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} sx={{ mb: 1.5 }}>
+                <LocalFireDepartmentIcon sx={{ color: 'warning.main' }} />
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                  Furnace Data (Summary)
+                </Typography>
+              </Stack>
+              <Stack alignItems="center" sx={{ flexGrow: 1, justifyContent: 'space-evenly', width: '100%' }}>
+                <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Typography variant="body2" textAlign="center" sx={{ mb: 0.5, fontWeight: 600 }}>
+                    Carburizing Furnace (TVC)
+                  </Typography>
+                  <Box sx={{ position: 'relative', width: 180, height: 180 }}>
+                  <PieChart
+                    series={[
+                      {
+                        data: furnacePieDataSorted.length
+                          ? furnacePieDataSorted
+                          : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)', rawLabel: 'No Data' }],
+                        arcLabelMinAngle: 10,
+                        arcLabelRadius: '90%',
+                        highlightScope: { faded: 'global', highlighted: 'item' },
+                        cornerRadius: 6,
+                        paddingAngle: 2,
+                        innerRadius: 52,
+                        outerRadius: 86,
+                      },
+                    ]}
+                    sx={{
+                      [`& .${pieArcLabelClasses.root}`]: {
+                        fontWeight: 'bold',
+                        fontSize: 13,
+                        paintOrder: 'stroke',
+                        stroke: '#222',
+                        strokeWidth: 2,
+                        textShadow: '0 2px 6px #fff, 0 0 2px #fff',
+                      },
+                    }}
+                    slotProps={{ legend: { hidden: true } }}
+                    margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                    width={180}
+                    height={180}
+                    onItemClick={(event, d) => {
+                      const idx = d.dataIndex;
+                      const pie = furnacePieDataSorted[idx];
+                      if (!pie) return;
+                      if (clickedFurnace && clickedFurnace.type === 'MC2' && clickedFurnace.label === pie.rawLabel) {
+                        setClickedFurnace(null);
+                      } else {
+                        setClickedFurnace({ type: 'MC2', label: pie.rawLabel, color: pie.color });
+                      }
+                    }}
+                  />
+                  <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                      {furnacePieDataSorted.reduce((s, d) => s + (Number(d.value) || 0), 0) || data.length}
+                    </Typography>
+                  </Box>
+                  </Box>
+                </Box>
+
+                <Divider flexItem sx={{ width: '100%', my: 1 }} />
+
+                <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Typography variant="body2" textAlign="center" sx={{ mb: 0.5, fontWeight: 600 }}>
+                    Tempering Furnace (TAT)
+                  </Typography>
+                  <Box sx={{ position: 'relative', width: 180, height: 180 }}>
+                  <PieChart
+                    series={[
+                      {
+                        data: temperingPieDataSorted.length
+                          ? temperingPieDataSorted
+                          : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)', rawLabel: 'No Data' }],
+                        arcLabelMinAngle: 10,
+                        arcLabelRadius: '90%',
+                        highlightScope: { faded: 'global', highlighted: 'item' },
+                        cornerRadius: 6,
+                        paddingAngle: 2,
+                        innerRadius: 52,
+                        outerRadius: 86,
+                      },
+                    ]}
+                    onItemClick={(event, d) => {
+                      const idx = d.dataIndex;
+                      const pie = temperingPieDataSorted[idx];
+                      if (!pie) return;
+                      if (clickedFurnace && clickedFurnace.type === 'MC4' && clickedFurnace.label === pie.rawLabel) {
+                        setClickedFurnace(null);
+                      } else {
+                        setClickedFurnace({ type: 'MC4', label: pie.rawLabel, color: pie.color });
+                      }
+                    }}
+                    sx={{
+                      [`& .${pieArcLabelClasses.root}`]: {
+                        fontWeight: 'bold',
+                        fontSize: 13,
+                        paintOrder: 'stroke',
+                        stroke: '#222',
+                        strokeWidth: 2,
+                        textShadow: '0 2px 6px #fff, 0 0 2px #fff',
+                      },
+                    }}
+                    slotProps={{ legend: { hidden: true } }}
+                    margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                    width={180}
+                    height={180}
+                  />
+                  <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                      {temperingPieDataSorted.reduce((s, d) => s + (Number(d.value) || 0), 0) || data.length}
+                    </Typography>
+                  </Box>
+                  </Box>
+                </Box>
+              </Stack>
             </Box>
           </Box>
         </Grid>
@@ -1131,77 +1297,79 @@ function ChartBlock({
           md={4}
           sx={{
             minWidth: 0,
-            maxWidth: 500,
-            pr: 4,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'stretch',
-            height: '100%',
+            gap: 2,
+            order: { md: 2 },
           }}
         >
-          <Box>
-            <Typography variant="h5" textAlign="center" gutterBottom>
-              General Information
-            </Typography>
+          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: 2.5 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+              <DescriptionOutlinedIcon sx={{ color: 'primary.main' }} />
+              <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                General Information
+              </Typography>
+            </Stack>
             <Box sx={{ width: '100%' }} />
             <Grid container spacing={1}>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={5}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
+                  <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>
                     Dept:
                   </Typography>
                 </Grid>
                 <Grid item xs={7}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+                  <Typography variant="body1" sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: 15 }}>
                     {first?.Dept ?? '-'}
                   </Typography>
                 </Grid>
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={5}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
+                  <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>
                     MachineId:
                   </Typography>
                 </Grid>
                 <Grid item xs={7}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+                  <Typography variant="body1" sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: 15 }}>
                     {first?.MachineId ?? '-'}
                   </Typography>
                 </Grid>
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={3}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
+                  <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>
                     MaterialDesc:
                   </Typography>
                 </Grid>
                 <Grid item xs={9}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+                  <Typography variant="body1" sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: 15 }}>
                     {first?.MaterialDesc ?? '-'}
                   </Typography>
                 </Grid>
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={3}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
+                  <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>
                     DimensionDesc:
                   </Typography>
                 </Grid>
                 <Grid item xs={9}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+                  <Typography variant="body1" sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: 15 }}>
                     {first?.DimensionDesc ?? '-'}
                   </Typography>
                 </Grid>
               </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={5}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
+                  <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>
                     CAT:
                   </Typography>
                 </Grid>
                 <Grid item xs={7}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
+                  <Typography variant="body1" sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: 15 }}>
                     {first?.CAT ?? '-'}
                   </Typography>
                 </Grid>
@@ -1209,101 +1377,59 @@ function ChartBlock({
             </Grid>
           </Box>
 
-          <Box mt={6}>
-            <Typography variant="h5" textAlign="center" gutterBottom>
-              Statistics
-            </Typography>
+          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: 2.5, flexGrow: 1 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+              <QueryStatsIcon sx={{ color: 'primary.main' }} />
+              <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                Statistics
+              </Typography>
+            </Stack>
             <Box sx={{ width: '100%'}} />
-            <Grid container spacing={1}>
-              <Grid container item xs={12} alignItems="top">
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
-                    No of Data:
-                  </Typography>
+            <Grid container spacing={1.5}>
+              {[
+                { label: 'No of Data:', value: statisticsToShow.Count ?? data.length ?? '-' },
+                { label: 'Mean:', value: statisticsToShow.MeanValue !== undefined ? statisticsToShow.MeanValue : '-' },
+                { label: 'Std Dev:', value: statisticsToShow.StdValue !== undefined ? Number(statisticsToShow.StdValue).toFixed(3) : '-' },
+                { label: 'LSL:', value: LSL !== null ? LSL : '-' },
+                { label: 'USL:', value: USL !== null ? USL : '-' },
+                { label: 'PP:', value: statisticsToShow.PPValue !== undefined ? statisticsToShow.PPValue : '-', color: metricColor(statisticsToShow.PPValue) },
+              ].map((s) => (
+                <Grid item xs={4} key={s.label}>
+                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, textAlign: 'center', bgcolor: 'action.hover', height: '100%' }}>
+                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary', fontWeight: 600 }}>{s.label}</Typography>
+                    <Typography sx={{ fontSize: 22, fontWeight: 'bold', mt: 0.25, color: s.color }}>{s.value}</Typography>
+                  </Box>
                 </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
-                    {statisticsToShow.Count ?? data.length ?? '-'}
-                  </Typography>
-                </Grid>
-              </Grid>
-              <Grid container item xs={12} alignItems="top">
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
-                    Mean:
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
-                    {statisticsToShow.MeanValue !== undefined ? statisticsToShow.MeanValue : '-'}
-                  </Typography>
-                </Grid>
-              </Grid>
-              <Grid container item xs={12} alignItems="top">
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
-                    StdDev:
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
-                    {statisticsToShow.StdValue !== undefined ? Number(statisticsToShow.StdValue).toFixed(3) : '-'}
-                  </Typography>
-                </Grid>
-              </Grid>
-              <Grid container item xs={12} alignItems="top">
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
-                    LSL:
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
-                    {LSL !== null ? LSL : '-'}
-                  </Typography>
-                </Grid>
-              </Grid>
-              <Grid container item xs={12} alignItems="top">
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
-                    USL:
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>
-                    {USL !== null ? USL : '-'}
-                  </Typography>
-                </Grid>
-              </Grid>
-              <Grid container item xs={12} alignItems="top">
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
-                    PP:
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold', color: metricColor(statisticsToShow.PPValue) }}>
-                    {statisticsToShow.PPValue !== undefined ? statisticsToShow.PPValue : '-'}
-                  </Typography>
-                </Grid>
-              </Grid>
-              <Grid container item xs={12} alignItems="top">
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
-                    PPK:
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold', color: metricColor(statisticsToShow.PPKValue) }}>
-                    {statisticsToShow.PPKValue !== undefined ? statisticsToShow.PPKValue : '-'}
-                  </Typography>
-                </Grid>
+              ))}
+              <Grid item xs={12}>
+                {(() => {
+                  const v = Number(statisticsToShow.PPKValue);
+                  const has = statisticsToShow.PPKValue !== undefined && statisticsToShow.PPKValue !== null && !isNaN(v);
+                  const status = !has
+                    ? { c: 'text.secondary', tint: 'action.hover', label: '' }
+                    : v >= 1.33
+                      ? { c: 'success.main', tint: 'rgba(46,125,50,0.12)', label: 'On Target (≥ 1.33)' }
+                      : v >= 1.0
+                        ? { c: 'warning.main', tint: 'rgba(237,108,2,0.14)', label: 'Marginal (1.00 – 1.33)' }
+                        : { c: 'error.main', tint: 'rgba(211,47,47,0.12)', label: 'Below Target (< 1.00)' };
+                  return (
+                    <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5, textAlign: 'center', bgcolor: 'action.hover' }}>
+                      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', fontWeight: 600 }}>PPK:</Typography>
+                      <Typography sx={{ fontSize: 28, fontWeight: 'bold', color: status.c }}>{has ? statisticsToShow.PPKValue : '-'}</Typography>
+                      {status.label && (
+                        <Box sx={{ display: 'inline-block', mt: 0.75, px: 1.5, py: 0.25, borderRadius: 5, bgcolor: status.tint, color: status.c, fontSize: 12, fontWeight: 700 }}>
+                          {status.label}
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                })()}
               </Grid>
               {/* 炉次 summary 展示：MC2 & MC4 都展示 */}
               {first?.CarbonizingFurnaceSummary && (
                 <Grid container item xs={12} alignItems="top">
                   <Grid item xs={6}>
-                    <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
+                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>
                       Carbonizing Furnace Summary:
                     </Typography>
                   </Grid>
@@ -1319,7 +1445,7 @@ function ChartBlock({
               {first?.TemperingFurnaceSummary && (
                 <Grid container item xs={12} alignItems="top">
                   <Grid item xs={6}>
-                    <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>
+                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>
                       Tempering Furnace Summary:
                     </Typography>
                   </Grid>
@@ -1334,127 +1460,8 @@ function ChartBlock({
               )}
             </Grid>
           </Box>
-
-          <Box mt={6}>
-            <Typography variant="h5" textAlign="center" gutterBottom>
-              Furnace Data
-            </Typography>
-            <Box sx={{ width: '100%', mb: 2 }} />
-            <Box
-              sx={{
-                width: '100%',
-                display: 'flex',
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                justifyContent: 'center',
-                alignItems: 'center',
-                gap: 2,
-              }}
-            >
-              <Box>
-                <Typography variant="h6" textAlign="center" sx={{ mb: 1 }}>
-                  Carburizing Furnace (TVC)
-                </Typography>
-                <PieChart
-                  series={[
-                    {
-                      data: furnacePieDataSorted.length
-                        ? furnacePieDataSorted
-                        : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)', rawLabel: 'No Data' }],
-                      arcLabelMinAngle: 10,
-                      arcLabelRadius: '90%',
-                      highlightScope: { faded: 'global', highlighted: 'item' },
-                      cornerRadius: 6,
-                      paddingAngle: 2,
-                      innerRadius: 40,
-                      outerRadius: 70,
-                      cx: 90,
-                      cy: 90,
-                    },
-                  ]}
-                  sx={{
-                    [`& .${pieArcLabelClasses.root}`]: {
-                      fontWeight: 'bold',
-                      fontSize: 13,
-                      paintOrder: 'stroke',
-                      stroke: '#222',
-                      strokeWidth: 2,
-                      textShadow: '0 2px 6px #fff, 0 0 2px #fff',
-                    },
-                  }}
-                  slotProps={{ legend: { hidden: true } }}
-                  width={180}
-                  height={180}
-                  onItemClick={(event, d) => {
-                    const idx = d.dataIndex;
-                    const pie = furnacePieDataSorted[idx];
-                    if (!pie) return;
-                    if (clickedFurnace && clickedFurnace.type === 'MC2' && clickedFurnace.label === pie.rawLabel) {
-                      setClickedFurnace(null);
-                    } else {
-                      setClickedFurnace({
-                        type: 'MC2',
-                        label: pie.rawLabel,
-                        color: pie.color,
-                      });
-                    }
-                  }}
-                />
-              </Box>
-
-              <Box>
-                <Typography variant="h6" textAlign="center" sx={{ mb: 1 }}>
-                  Tempering Furnace (TAT)
-                </Typography>
-                <PieChart
-                  series={[
-                    {
-                      data: temperingPieDataSorted.length
-                        ? temperingPieDataSorted
-                        : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)', rawLabel: 'No Data' }],
-                      arcLabelMinAngle: 10,
-                      arcLabelRadius: '90%',
-                      highlightScope: { faded: 'global', highlighted: 'item' },
-                      cornerRadius: 6,
-                      paddingAngle: 2,
-                      innerRadius: 40,
-                      outerRadius: 70,
-                      cx: 90,
-                      cy: 90,
-                    },
-                  ]}
-                  onItemClick={(event, d) => {
-                    const idx = d.dataIndex;
-                    const pie = temperingPieDataSorted[idx];
-                    if (!pie) return;
-                    if (clickedFurnace && clickedFurnace.type === 'MC4' && clickedFurnace.label === pie.rawLabel) {
-                      setClickedFurnace(null);
-                    } else {
-                      setClickedFurnace({
-                        type: 'MC4',
-                        label: pie.rawLabel,
-                        color: pie.color,
-                      });
-                    }
-                  }}
-                  sx={{
-                    [`& .${pieArcLabelClasses.root}`]: {
-                      fontWeight: 'bold',
-                      fontSize: 13,
-                      paintOrder: 'stroke',
-                      stroke: '#222',
-                      strokeWidth: 2,
-                      textShadow: '0 2px 6px #fff, 0 0 2px #fff',
-                    },
-                  }}
-                  slotProps={{ legend: { hidden: true } }}
-                  width={180}
-                  height={180}
-                />
-              </Box>
-            </Box>
-          </Box>
         </Grid>
+
             </Grid>
             )}
           </Box>
@@ -1665,7 +1672,7 @@ const NCSubsampleScatterBarChart = () => {
     // 移除 scale 样式，保证内容宽度100%，自适应父容器
     return (
       <Box sx={{ width: '100%' }}>
-          <Typography variant="h4" gutterBottom sx={{ mt: 2, mb: 0}}>
+          <Typography variant="h4" gutterBottom sx={{ mt: 2, mb: 0, fontWeight: 'bold' }}>
             Subsample Scatter Distribution
           </Typography>
         <ChartBlock

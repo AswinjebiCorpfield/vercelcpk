@@ -713,9 +713,6 @@ const MonthlyHistoricalOverallLots = () => {
         }
         leading={
           <>
-            <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.6, alignSelf: 'center', mr: 0.5 }}>
-              Filters
-            </Typography>
             <Box sx={{ display: 'inline-flex', p: '3px', borderRadius: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', flexShrink: 0, alignSelf: 'center' }}>
               {[{ label: 'CPK', val: true }, { label: 'PPK', val: false }].map((o) => (
                 <Box

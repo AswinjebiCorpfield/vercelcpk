@@ -576,9 +576,6 @@ const LotCPKBarChart = () => {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: filterOpen ? 1.5 : 0 }}>
-          <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-            Filters
-          </Typography>
           <Box sx={{ display: 'inline-flex', p: '3px', borderRadius: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
             {[['Count', 'Count'], ['Percentage', 'Percent']].map(([val, label]) => (
               <Box
@@ -618,10 +615,12 @@ const LotCPKBarChart = () => {
           {FILTER_KEYS.map((key) => {
             const isCAT = key === 'CAT';
             const filterValue = filters[key];
-            
+            const isFurnace = key === 'CarbonizingFurnace' || key === 'TemperingFurnace' || key === 'Dept' || key === 'CAT';
+
             const FILTER_DISPLAY_NAMES = { CarbonizingFurnace: 'CarburizingFurnace' };
           return (
               <Autocomplete
+                size="small"
                 key={key}
                 multiple={isCAT}
                 options={
@@ -639,7 +638,7 @@ const LotCPKBarChart = () => {
                     {...params}
                     label={FILTER_DISPLAY_NAMES[key] ?? key}
                     variant="outlined"
-                    sx={{ minWidth: 160, flex: '1 1 160px' }}
+                    sx={isFurnace ? { minWidth: 145, flex: '0 1 145px' } : { minWidth: 160, flex: '1 1 160px' }}
                     placeholder={isCAT ? 'Select CAT' : 'All'}
                     InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
                   />
@@ -663,6 +662,7 @@ const LotCPKBarChart = () => {
           })}
 
           <Autocomplete
+            size="small"
             options={startMonthOptions}
             value={filters.StartMonth || getRecent12MonthsStart()}
             onChange={(e, value) => {
@@ -677,7 +677,7 @@ const LotCPKBarChart = () => {
                 {...params}
                 label="Start Month"
                 variant="outlined"
-                sx={{ minWidth: 160, flex: '1 1 160px' }}
+                sx={{ minWidth: 145, flex: '0 1 145px' }}
                 placeholder="All"
                 InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
               />
@@ -697,6 +697,7 @@ const LotCPKBarChart = () => {
             renderTags={() => null}
           />
           <Autocomplete
+            size="small"
             options={endMonthOptions}
             value={filters.EndMonth || getCurrentMonth()}
             onChange={(e, value) => {
@@ -711,7 +712,7 @@ const LotCPKBarChart = () => {
                 {...params}
                 label="End Month"
                 variant="outlined"
-                sx={{ minWidth: 160, flex: '1 1 160px' }}
+                sx={{ minWidth: 145, flex: '0 1 145px' }}
                 placeholder="All"
                 InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
               />
@@ -740,9 +741,9 @@ const LotCPKBarChart = () => {
         <Card sx={{ mt: 0, width: '100%', p: 2, pb: 1, mb: 2.5 }}>
           <Grid container direction="row" spacing={2}>
             {/* Overview */}
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} md={2} sx={{ maxWidth: { md: 200 } }}>
               <Box sx={{ width: '100%', px: 1.5, py: 1 }}>
-                <Typography variant="h3" sx={{ fontWeight: 800, textTransform: 'uppercase', lineHeight: 1.1 }}>
+                <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
                   Individual Lot
                 </Typography>
                 <Typography sx={{ fontSize: 13, color: 'text.secondary', fontWeight: 600, mb: 1.5 }}>
@@ -763,7 +764,7 @@ const LotCPKBarChart = () => {
               </Box>
             </Grid>
             {/* Bar chart */}
-            <Grid item xs={12} md={9} sx={{ minWidth: 400, overflow: 'auto' }}>
+            <Grid item xs={12} md sx={{ minWidth: 400, overflow: 'auto', flexGrow: 1, flexBasis: 0, maxWidth: 'none' }}>
               <Typography
                 variant="body2"
                 sx={{ color: 'primary.main', fontStyle: 'italic', mb: 1, ml: 1, letterSpacing: 0.3 }}
@@ -863,9 +864,9 @@ const LotCPKBarChart = () => {
         <Card sx={{ mt: 0, width: '100%', p: 2, mb: 3 }}>
           <Grid container direction="row" spacing={2}>
             {/* Overview area */}
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} md={2} sx={{ maxWidth: { md: 200 } }}>
               <Box sx={{ width: '100%', px: 1.5, py: 1 }}>
-                <Typography variant="h3" sx={{ fontWeight: 800, textTransform: 'uppercase', lineHeight: 1.1, mb: 1.5 }}>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1.5 }}>
                   Lot Daily CPK
                 </Typography>
                 <Stack spacing={1}>
@@ -883,7 +884,7 @@ const LotCPKBarChart = () => {
               </Box>
             </Grid>
             {/* Line chart */}
-            <Grid item xs={12} md={9} sx={{ minWidth: 400, overflow: 'auto' }}>
+            <Grid item xs={12} md sx={{ minWidth: 400, overflow: 'auto', flexGrow: 1, flexBasis: 0, maxWidth: 'none' }}>
               <Typography
                 variant="body2"
                 sx={{ color: 'primary.main', fontStyle: 'italic', mb: 1, ml: 1, letterSpacing: 0.3 }}
