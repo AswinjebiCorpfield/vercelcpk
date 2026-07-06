@@ -44,7 +44,10 @@ const LotsCPPKBarChart = () => {
         MachineId: hasSavedFilters ? (savedFilters.MachineId ?? '') : defaultFilters.MachineId,
         MaterialDesc: savedFilters.MaterialDesc ?? defaultFilters.MaterialDesc,
         DimensionDesc: savedFilters.DimensionDesc ?? defaultFilters.DimensionDesc,
-        CAT: savedFilters.CAT ? (Array.isArray(savedFilters.CAT) ? savedFilters.CAT : [savedFilters.CAT]) : defaultFilters.CAT,
+        // BRD S3: default CAT is multi-select CTQ/CTP/NOR; an empty array falls back to it too.
+        CAT: Array.isArray(savedFilters.CAT)
+          ? (savedFilters.CAT.length ? savedFilters.CAT : defaultFilters.CAT)
+          : (savedFilters.CAT ? [savedFilters.CAT] : defaultFilters.CAT),
         StartMonth: savedFilters.StartMonth ?? defaultFilters.StartMonth,
         EndMonth: savedFilters.EndMonth ?? defaultFilters.EndMonth,
       };
@@ -182,7 +185,7 @@ useEffect(() => {
       MachineId: '',
       MaterialDesc: '',
       DimensionDesc: '',
-      CAT: [],
+      CAT: ['CTQ', 'CTP', 'NOR'], // BRD S3: reset to the default CAT selection, not empty
       StartMonth: '',
       EndMonth: '',
     };

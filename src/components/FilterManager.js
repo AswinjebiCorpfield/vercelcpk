@@ -335,9 +335,9 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
           : baseOptions;
         const hasValue = !isCAT && (filterValue !== '');
         return (
-          // First field gets ml:auto so the whole filter-field group right-aligns
-          // (FILTERS toggle stays left, Clear stays far right).
-          <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ...(idx === 0 && { ml: 'auto' }) }}>
+          // Filters are left-aligned (sit right after the leading toggle); the Clear
+          // button carries ml:auto so it stays pinned to the far right.
+          <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Autocomplete
               key={isCAT ? key : `${key}_${clearKeys[key] ?? 0}`}
               multiple={isCAT}
@@ -505,7 +505,7 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
       <Tooltip title="Clear all filters">
         <IconButton
           onClick={handleClearFilters}
-          sx={{ mb: 0.25, border: '1px solid', borderColor: 'divider', borderRadius: 1.5, color: 'text.secondary', '&:hover': { color: 'error.main', borderColor: 'error.main' } }}
+          sx={{ ml: 'auto', mb: 0.25, border: '1px solid', borderColor: 'divider', borderRadius: 1.5, color: 'text.secondary', '&:hover': { color: 'error.main', borderColor: 'error.main' } }}
         >
           <FilterAltOffIcon fontSize="small" />
         </IconButton>

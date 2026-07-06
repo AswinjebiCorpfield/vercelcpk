@@ -48,7 +48,9 @@ const LotCPKBarChart = () => {
       MachineId: hasSavedFilters ? (saved.MachineId ?? '') : 'HTFDCATE-L1',
       MaterialDesc: saved.MaterialDesc ?? '',
       DimensionDesc: saved.DimensionDesc ?? '',
-      CAT: saved.CAT ?? ['CTQ', 'CTP', 'NOR'],
+      // BRD S3: default CAT selection is multi-select CTQ/CTP/NOR. Treat an empty
+      // array (e.g. left over from a prior Clear / another page) as "use default" too.
+      CAT: (Array.isArray(saved.CAT) && saved.CAT.length) ? saved.CAT : ['CTQ', 'CTP', 'NOR'],
       StartMonth: saved.StartMonth ?? '',
       EndMonth: saved.EndMonth ?? '',
       CarbonizingFurnace: saved.CarbonizingFurnace ?? '',
@@ -187,7 +189,7 @@ const LotCPKBarChart = () => {
       MachineId: '',
       MaterialDesc: '',
       DimensionDesc: '',
-      CAT: [],
+      CAT: ['CTQ', 'CTP', 'NOR'], // BRD S3: reset to the default CAT selection, not empty
       StartMonth: '',
       EndMonth: '',
       CarbonizingFurnace: '',

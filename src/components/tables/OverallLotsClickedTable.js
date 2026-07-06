@@ -693,17 +693,24 @@ const OverallLotsClickedTable = () => {
                         </Typography>
                     </Box>
                     <CsvExportButton
-                        data={finalFilteredData}
+                        data={finalFilteredData.map(r => ({
+                            ...r,
+                            // Show the Cpk<1 lot rate as a percentage (matches the on-screen cell).
+                            CPK_NC_Percentage: (r.CPK_NC_Percentage !== undefined && r.CPK_NC_Percentage !== null && !isNaN(r.CPK_NC_Percentage))
+                                ? Number(r.CPK_NC_Percentage).toFixed(0) + '%'
+                                : r.CPK_NC_Percentage,
+                        }))}
                         headers={columns.filter(col => col.id !== 'FurtherAnalysis').map(col => col.id)}
+                        headerLabels={{
+                            CPK_NC_Percentage: 'Cpk < 1 Lot',
+                            BatchMC2: 'Carburizing Furnace',
+                            BatchMC4: 'Tempering Furnace',
+                        }}
                         filename={`Dimension_Measurement_${formatMonthYear(date) || 'Export'}.csv`}
                         generalInfo={[
                             { label: 'Report', value: 'Dimension Measurement Table' },
-                            { label: 'Metric', value: metric },
-                            { label: 'Result', value: resultType === 'ac' ? 'CPK ≥ 1' : 'CPK < 1' },
                             { label: 'Period', value: formatMonthYear(date) },
                             { label: 'Dept', value: state.Dept || 'HT' },
-                            { label: 'MachineId', value: state.MachineId || '' },
-                            { label: 'CAT', value: Array.isArray(state.CAT) ? state.CAT.join(', ') : (state.CAT || '') },
                         ]}
                         sx={{ flexShrink: 0 }}
                     >
@@ -725,7 +732,14 @@ const OverallLotsClickedTable = () => {
                             sx={{
                                 minWidth: { xs: 800, md: 'auto' },
                                 '& .MuiTableCell-root': { fontSize: "0.82rem !important" },
-                                '& .MuiTableHead-root .MuiTableCell-root': { fontSize: "0.82rem !important", fontWeight: 'bold !important' },
+                                // Branded header band (nav indigo + light text; readable in light & dark).
+                                '& .MuiTableHead-root .MuiTableCell-root': {
+                                    fontSize: "0.82rem !important", fontWeight: 'bold !important',
+                                    backgroundColor: 'custom.nav', color: 'custom.navText',
+                                },
+                                '& .MuiTableHead-root .MuiTableSortLabel-root, & .MuiTableHead-root .MuiTableSortLabel-root:hover, & .MuiTableHead-root .MuiTableSortLabel-root.Mui-active': { color: 'custom.navText' },
+                                '& .MuiTableHead-root .MuiTableSortLabel-icon': { color: 'custom.navText !important' },
+                                '& .MuiTableHead-root .MuiIconButton-root': { color: 'custom.navText' },
                                 '& .MuiTableSortLabel-root': { fontSize: "0.82rem !important" },
                             }}
                         >

@@ -1,11 +1,17 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Typography, Grid, CircularProgress, Button } from '@mui/material';
+import { Typography, Grid, CircularProgress, Button, Stack, TextField, InputAdornment, Popover, Tooltip, IconButton } from '@mui/material';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import QueryStatsIcon from '@mui/icons-material/QueryStats';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import CloseIcon from '@mui/icons-material/Close';
 import { metricColor } from '../../utils/metricFormat';
 import Box from '@mui/material/Box';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import Slider from '@mui/material/Slider';
 import dayjs from 'dayjs';
 import 'dayjs/locale/en';
@@ -775,9 +781,9 @@ const SubsampleScatterDistribution = () => {
   // 弹窗表格列定义（与示例一致）
   const rawDataColumns = [
     { key: 'LotNo', label: 'LotNo' },
-    { key: 'SubSampleNo', label: 'SubSampleNo' },
     { key: 'CarbonizingFurnace', label: 'Carburizing Furnace' },
     { key: 'TemperingFurnace', label: 'Tempering Furnace' },
+    { key: 'SubSampleNo', label: 'SubSampleNo' }, // after Tempering Furnace, before MeasValue
     { key: 'MeasValue', label: 'MeasValue' },
     { key: 'MeasDate', label: 'MeasDate' },
   ];
@@ -826,68 +832,131 @@ const SubsampleScatterDistribution = () => {
     return statisticsValue;
   }, [filteredStatistics, statisticsValue]);
 
+  // BRD (Historical Dimension drill-in): General Information shows the Period as a
+  // range (e.g. "Jun 2025 – Jul 2026"); Statistics shows Target = (LSL+USL)/2.
+  const fmtMonthLabel = (m) => {
+    const s = String(m || '');
+    if (!/^\d{6}$/.test(s)) return s || '-';
+    const d = new Date(`${s.slice(0, 4)}-${s.slice(4, 6)}-01`);
+    return `${d.toLocaleString('en-US', { month: 'short' })} ${s.slice(0, 4)}`;
+  };
+  const periodRangeLabel = (requestedStartMonth && requestedEndMonth)
+    ? `${fmtMonthLabel(requestedStartMonth)} – ${fmtMonthLabel(requestedEndMonth)}`
+    : (requestedStartMonth ? fmtMonthLabel(requestedStartMonth) : '-');
+  const _lslNum = Number(allData[0]?.LSL);
+  const _uslNum = Number(allData[0]?.USL);
+  const targetValue = (Number.isFinite(_lslNum) && Number.isFinite(_uslNum) && _lslNum > -999 && _uslNum < 999)
+    ? ((_lslNum + _uslNum) / 2)
+    : '-';
+
+  // Combined date-range field (Key Focus pattern): a single field that opens a
+  // popover holding the two calendars, with an inline clear (X).
+  const [dateAnchorEl, setDateAnchorEl] = useState(null);
+  const dateRangeDisplay = (() => {
+    const fmt = (d) => (d ? dayjs(d, 'MM/DD/YYYY').format('MMM DD, YYYY') : '');
+    const s = fmt(dateRange[0]);
+    const e = fmt(dateRange[1]);
+    if (s && e) return `${s} – ${e}`;
+    if (s) return `${s} – …`;
+    if (e) return `… – ${e}`;
+    return '';
+  })();
+
   const hasNoFilteredData = !loading && filteredData.length === 0;
 
   return (
     <Box sx={{ padding: 4, mb: 4, width: '100%', maxWidth: '100vw', overflow: 'hidden' }}>
-  <Typography variant="h4" gutterBottom>
-    Subsample Scatter Distribution
-  </Typography>
   <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en">
-    <Box sx={{ display: 'flex', gap: 4, alignItems: 'center', mb: 4, flexWrap: 'wrap' }}>
-      {/* 日期选择部分不变 */}
-      <Typography variant="h5" sx={{ fontSize: 16 }}>Date Range:</Typography>
-      <DatePicker
-        label="Start Date"
-        views={['year', 'month', 'day']}
-        value={dateRange[0] ? dayjs(dateRange[0], 'MM/DD/YYYY') : null}
-        onChange={val => setDateRange([val ? val.format('MM/DD/YYYY') : null, dateRange[1]])}
-        shouldDisableDate={date => shouldDisableDateKeepSelected(date, dateRange[0])}
-        shouldDisableYear={year => shouldDisableYearKeepSelected(year, dateRange[0])}
-        shouldDisableMonth={month => shouldDisableMonthKeepSelected(month, dateRange[0])}
-        format="MMM DD, YYYY"
-        slotProps={{
-          textField: {
-            size: 'small',
-            sx: { minWidth: 200, fontSize: 13, '& .MuiInputBase-root': { height: 40 } },
-            InputLabelProps: { style: { fontSize: 13 } },
-            inputProps: { style: { fontSize: 13 } },
-            placeholder: 'MM/DD/YYYY',
-          },
-          openPickerButton: { size: 'small' },
-        }}
-        sx={{ fontSize: 13 }}
-        closeOnSelect
-      />
-      <Typography variant="h5" sx={{ fontSize: 16 }}>to</Typography>
-      <DatePicker
-        label="End Date"
-        views={['year', 'month', 'day']}
-        value={dateRange[1] ? dayjs(dateRange[1], 'MM/DD/YYYY') : null}
-        onChange={val => setDateRange([dateRange[0], val ? val.format('MM/DD/YYYY') : null])}
-        shouldDisableDate={date => shouldDisableDateKeepSelected(date, dateRange[1])}
-        shouldDisableYear={year => shouldDisableYearKeepSelected(year, dateRange[1])}
-        shouldDisableMonth={month => shouldDisableMonthKeepSelected(month, dateRange[1])}
-        format="MMM DD, YYYY"
-        slotProps={{
-          textField: {
-            size: 'small',
-            sx: { minWidth: 200, fontSize: 13, '& .MuiInputBase-root': { height: 40 } },
-            InputLabelProps: { style: { fontSize: 13 } },
-            inputProps: { style: { fontSize: 13 } },
-            placeholder: 'MM/DD/YYYY',
-          },
-          openPickerButton: { size: 'small' },
-        }}
-        sx={{ fontSize: 13 }}
-        closeOnSelect
-      />
-      <Button
-        variant="outlined"
+    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 4, flexWrap: 'wrap' }}>
+      <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+        Subsample Scatter Distribution
+      </Typography>
+      {/* Combined date-range field (Key Focus pattern) opens a popover with two calendars. */}
+      <TextField
         size="small"
-        sx={{ ml: 2, fontSize: 13, height: 40, px: 3 }}
-        onClick={() => setDateRange([null, null])}
-      >Clear</Button>
+        value={dateRangeDisplay}
+        placeholder="All dates"
+        onClick={e => setDateAnchorEl(e.currentTarget)}
+        InputProps={{
+          readOnly: true,
+          startAdornment: (
+            <InputAdornment position="start">
+              <CalendarMonthIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+            </InputAdornment>
+          ),
+          endAdornment: (dateRange[0] || dateRange[1]) ? (
+            <InputAdornment position="end">
+              <Tooltip title="Clear date range">
+                <IconButton size="small" onClick={e => { e.stopPropagation(); setDateRange([null, null]); }} sx={{ p: 0.25, color: 'text.secondary', '&:hover': { color: 'error.main' } }}>
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </InputAdornment>
+          ) : null,
+        }}
+        sx={{ flex: '0 0 auto', width: 320, ml: 'auto', '& .MuiInputBase-root': { height: 40, cursor: 'pointer' }, '& input': { cursor: 'pointer' } }}
+      />
+      <Popover
+        open={Boolean(dateAnchorEl)}
+        anchorEl={dateAnchorEl}
+        onClose={() => setDateAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ p: 1.5 }}>
+          <Box>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', textAlign: 'center' }}>Start Date</Typography>
+            <DateCalendar
+              views={['year', 'month', 'day']}
+              value={dateRange[0] ? dayjs(dateRange[0], 'MM/DD/YYYY') : null}
+              onChange={val => setDateRange([val ? val.format('MM/DD/YYYY') : null, dateRange[1]])}
+              shouldDisableDate={date => shouldDisableDateKeepSelected(date, dateRange[0])}
+              shouldDisableYear={year => shouldDisableYearKeepSelected(year, dateRange[0])}
+              shouldDisableMonth={month => shouldDisableMonthKeepSelected(month, dateRange[0])}
+            />
+          </Box>
+          <Box>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary', textAlign: 'center' }}>End Date</Typography>
+            <DateCalendar
+              views={['year', 'month', 'day']}
+              value={dateRange[1] ? dayjs(dateRange[1], 'MM/DD/YYYY') : null}
+              onChange={val => setDateRange([dateRange[0], val ? val.format('MM/DD/YYYY') : null])}
+              shouldDisableDate={date => shouldDisableDateKeepSelected(date, dateRange[1])}
+              shouldDisableYear={year => shouldDisableYearKeepSelected(year, dateRange[1])}
+              shouldDisableMonth={month => shouldDisableMonthKeepSelected(month, dateRange[1])}
+            />
+          </Box>
+        </Stack>
+      </Popover>
+      {/* BRD (Historical Dimension): Download Subsample Data sits beside the date-range filter. */}
+      <CsvExportButton
+        data={downloadDataRows}
+        headers={downloadColumns}
+        filename={buildExportFilename(selectedData?.MaterialDesc, 'Subsample_Scatter')}
+        generalInfo={[
+          { label: 'Report', value: 'HRA/HRC Scattered Subsample Distribution' },
+          { label: 'Dept', value: selectedData?.Dept || '' },
+          { label: 'MachineId', value: selectedData?.MachineId || '' },
+          { label: 'MaterialDesc', value: selectedData?.MaterialDesc || '' },
+          { label: 'DimensionDesc', value: selectedData?.DimensionDesc || '' },
+          { label: 'CAT', value: selectedData?.CAT || '' },
+        ]}
+        statistics={[
+          { label: 'No of Data', value: statisticsToShow?.Count ?? allData.length ?? '' },
+          { label: 'Mean', value: statisticsToShow?.MeanValue ?? allData[0]?.MeanValue ?? '' },
+          { label: 'Std Dev', value: statisticsToShow?.StdValue != null ? Number(statisticsToShow.StdValue).toFixed(3) : '' },
+          { label: 'LSL', value: allData[0]?.LSL ?? '' },
+          { label: 'USL', value: allData[0]?.USL ?? '' },
+          { label: 'Target', value: targetValue },
+          { label: 'CP', value: statisticsToShow?.CPValue ?? '' },
+          { label: 'CPK', value: statisticsToShow?.CPKValue ?? '' },
+          { label: 'PP', value: statisticsToShow?.PPValue ?? '' },
+          { label: 'PPK', value: statisticsToShow?.PPKValue ?? '' },
+        ]}
+        sx={{ height: 40, px: 2.5, fontSize: 14, textTransform: 'none', whiteSpace: 'nowrap', borderRadius: 2 }}
+        variant="outlined"
+      >
+        Download Subsample Data
+      </CsvExportButton>
     </Box>
   </LocalizationProvider>
   {loading ? (
@@ -912,7 +981,7 @@ const SubsampleScatterDistribution = () => {
   ) : (
     <Grid container spacing={2} sx={{ minWidth: 0, width: '100%', maxWidth: '100vw', overflow: 'hidden' }}>
       {/* 左侧图表区 */}
-      <Grid item xs={12} md={8} sx={{
+      <Grid item xs={12} md={6} sx={{
         minWidth: 0,
         maxWidth: '100%',
         overflow: 'hidden',
@@ -1145,109 +1214,126 @@ const SubsampleScatterDistribution = () => {
           }
           />
         </Box>
-        {/* ...Slider部分略... */}
+        {/* Quick Date Range Selection slider — sits at the bottom of the graph column. */}
         {availableDatesRaw.length > 1 && (
-          <>
-            <Box sx={{
-              width: '100%',
-              px: 2,
-              position: 'relative',
-              pb: 4,
-              margin: '0 auto'
-            }}>
-              <Box sx={{
-                position: 'absolute',
-                left: 0,
+          <Box sx={{ width: '100%', px: 2, pt: 1, pb: 1 }}>
+            <Slider
+              value={safeSliderValue}
+              min={minSlider}
+              max={maxSlider}
+              step={1}
+              onChange={(_, newValue) => {
+                if (Array.isArray(newValue)) {
+                  setDateRange([sliderDatesRaw[newValue[0]], sliderDatesRaw[newValue[1]]]);
+                }
+              }}
+              valueLabelDisplay="auto"
+              valueLabelFormat={idx => sliderDatesDisplay[idx]}
+              sx={{
                 width: '100%',
-                display: 'flex',
-                justifyContent: 'space-between',
-                pointerEvents: 'none',
-                zIndex: 1,
                 height: 10,
-                alignItems: 'flex-end',
-              }}>
-                <Typography variant="body1" sx={{ fontSize: 13, color: 'white', ml: '6px', mb: '-66px' }}>
-                  {sliderDatesDisplay[minSlider]}
-                </Typography>
-                <Typography variant="body1" sx={{ fontSize: 13, color: 'white', mr: '6px', mb: '-66px' }}>
-                  {sliderDatesDisplay[maxSlider]}
-                </Typography>
-              </Box>
-              <Slider
-                value={safeSliderValue}
-                min={minSlider}
-                max={maxSlider}
-                step={1}
-                onChange={(_, newValue) => {
-                  if (Array.isArray(newValue)) {
-                    setDateRange([
-                      sliderDatesRaw[newValue[0]],
-                      sliderDatesRaw[newValue[1]],
-                    ]);
-                  }
-                }}
-                valueLabelDisplay="auto"
-                valueLabelFormat={idx => sliderDatesDisplay[idx]}
-                sx={{
-                  width: '100%',
-                  mt: 2,
-                  mb: 2,
-                  height: 12,
-                  '& .MuiSlider-thumb': {
-                    width: 32,
-                    height: 32,
-                  },
-                  '& .MuiSlider-valueLabel': {
-                    fontSize: 13,
-                    background: '#13133F',
-                    color: 'white',
-                    borderRadius: 2,
-                    px: 2,
-                    py: 1,
-                  },
-                }}
-                disabled={sliderDatesRaw.length < 2}
-              />
-              <Typography variant="h6" sx={{fontSize: 22, textAlign: 'center'}}>
-                Quick Date Range Selection
-              </Typography>
+                '& .MuiSlider-thumb': { width: 24, height: 24 },
+                '& .MuiSlider-valueLabel': { fontSize: 13, background: '#13133F', color: '#fff', borderRadius: 2, px: 2, py: 1 },
+              }}
+              disabled={sliderDatesRaw.length < 2}
+            />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+              <Typography sx={{ fontSize: 13, color: 'text.primary', fontWeight: 600 }}>{sliderDatesDisplay[minSlider]}</Typography>
+              <Typography sx={{ fontSize: 13, color: 'text.primary', fontWeight: 600 }}>{sliderDatesDisplay[maxSlider]}</Typography>
             </Box>
-            {/* BRD SC6: "Retrieve raw data" removed; keep only "Download Raw Data". */}
-            <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', mt: 2, gap: 2 }}>
-              <CsvExportButton
-                data={downloadDataRows}
-                headers={downloadColumns}
-                filename={buildExportFilename(selectedData?.MaterialDesc, 'Subsample_Scatter')}
-                generalInfo={[
-                  { label: 'Report', value: 'HRA/HRC Scattered Subsample Distribution' },
-                  { label: 'Dept', value: selectedData?.Dept || '' },
-                  { label: 'MachineId', value: selectedData?.MachineId || '' },
-                  { label: 'MaterialDesc', value: selectedData?.MaterialDesc || '' },
-                  { label: 'DimensionDesc', value: selectedData?.DimensionDesc || '' },
-                  { label: 'CAT', value: selectedData?.CAT || '' },
-                  { label: 'No of Data', value: statisticsToShow?.NoOfData ?? statisticsToShow?.NumberOfData ?? '' },
-                  { label: 'CP', value: statisticsToShow?.CPValue ?? '' },
-                  { label: 'CPK', value: statisticsToShow?.CPKValue ?? '' },
-                  { label: 'PP', value: statisticsToShow?.PPValue ?? '' },
-                  { label: 'PPK', value: statisticsToShow?.PPKValue ?? '' },
-                ]}
-                sx={{
-                  width: 320,
-                  fontSize: 22,
-                  py: 2,
-                  color: 'white',
-                  borderRadius: 2
-                }}
-                variant="outlined"
-              >
-                Download Raw Data
-              </CsvExportButton>
-            </Box>
-          </>
+            <Typography variant="h6" sx={{ fontSize: 18, textAlign: 'center', mt: 1, fontWeight: 700 }}>
+              Quick Date Range Selection
+            </Typography>
+          </Box>
         )}
       </Grid>
+      {/* 中间：炉次数据 (Furnace Data) 独立一列 */}
+      <Grid item xs={12} md={2.5} sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+        <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: 2.5, mb: 3 }}>
+          <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} sx={{ mb: 2 }}>
+            <LocalFireDepartmentIcon sx={{ color: 'warning.main' }} />
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Furnace Data (Summary)</Typography>
+          </Stack>
+          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
+            {/* MC2 Pie (Carburizing) */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Typography variant="subtitle1" textAlign="center" sx={{ mb: 1, fontWeight: 600 }}>Carburizing Furnace (TVC)</Typography>
+              <Box sx={{ position: 'relative', width: 270, height: 270 }}>
+                <PieChart
+                  series={[
+                    {
+                      data: furnacePieDataSorted.length
+                        ? furnacePieDataSorted
+                        : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)', rawLabel: 'No Data' }],
+                      arcLabelMinAngle: 10,
+                      arcLabelRadius: '90%',
+                      highlightScope: { faded: 'global', highlighted: 'item' },
+                      cornerRadius: 6,
+                      paddingAngle: 2,
+                      innerRadius: 68,
+                      outerRadius: 118,
+                      color: (item) => item.color,
+                    },
+                  ]}
+                  sx={{ [`& .${pieArcLabelClasses.root}`]: { fontWeight: 'bold', fontSize: 12, paintOrder: 'stroke', stroke: '#222', strokeWidth: 2, textShadow: '0 2px 6px #fff, 0 0 2px #fff' } }}
+                  slotProps={{ legend: { hidden: true } }}
+                  width={270}
+                  height={270}
+                  margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                  onItemClick={(event, d) => {
+                    const pie = furnacePieDataSorted[d.dataIndex];
+                    if (!pie) return;
+                    if (clickedFurnace && clickedFurnace.type === 'MC2' && clickedFurnace.label === pie.rawLabel) setClickedFurnace(null);
+                    else setClickedFurnace({ type: 'MC2', label: pie.rawLabel, color: pie.color });
+                  }}
+                />
+                <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{furnacePieDataSorted.reduce((s, d) => s + (Number(d.value) || 0), 0)}</Typography>
+                </Box>
+              </Box>
+            </Box>
+            {/* MC4 Pie (Tempering) */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Typography variant="subtitle1" textAlign="center" sx={{ mb: 1, fontWeight: 600 }}>Tempering Furnace (TAT)</Typography>
+              <Box sx={{ position: 'relative', width: 270, height: 270 }}>
+                <PieChart
+                  series={[
+                    {
+                      data: temperingPieDataSorted.length
+                        ? temperingPieDataSorted
+                        : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)', rawLabel: 'No Data' }],
+                      arcLabelMinAngle: 10,
+                      arcLabelRadius: '90%',
+                      highlightScope: { faded: 'global', highlighted: 'item' },
+                      cornerRadius: 6,
+                      paddingAngle: 2,
+                      innerRadius: 68,
+                      outerRadius: 118,
+                      color: (item) => item.color,
+                    },
+                  ]}
+                  onItemClick={(event, d) => {
+                    const pie = temperingPieDataSorted[d.dataIndex];
+                    if (!pie) return;
+                    if (clickedFurnace && clickedFurnace.type === 'MC4' && clickedFurnace.label === pie.rawLabel) setClickedFurnace(null);
+                    else setClickedFurnace({ type: 'MC4', label: pie.rawLabel, color: pie.color });
+                  }}
+                  sx={{ [`& .${pieArcLabelClasses.root}`]: { fontWeight: 'bold', fontSize: 12, paintOrder: 'stroke', stroke: '#222', strokeWidth: 2, textShadow: '0 2px 6px #fff, 0 0 2px #fff' } }}
+                  slotProps={{ legend: { hidden: true } }}
+                  width={270}
+                  height={270}
+                  margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                />
+                <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{temperingPieDataSorted.reduce((s, d) => s + (Number(d.value) || 0), 0)}</Typography>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      </Grid>
       {/* 右侧信息区 */}
-      <Grid item xs={12} md={4} sx={{
+      <Grid item xs={12} md={3.5} sx={{
         minWidth: 0,
         maxWidth: 500,
         overflow: 'hidden',
@@ -1267,243 +1353,74 @@ const SubsampleScatterDistribution = () => {
         </CsvExportButton> */}
         {/* ...General Info和Statistics*/}
        
-        <Box>
-          <Typography variant="h5" textAlign="center" gutterBottom>General Information</Typography>
-          <Box sx={{ width: '100%', borderBottom: 1, borderColor: 'white', mb: 2 }} />
-          <Grid container spacing={1}>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={5}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>Dept:</Typography>
+        <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: 2.5, mb: 3 }}>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+            <DescriptionOutlinedIcon sx={{ color: 'primary.main' }} />
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>General Information</Typography>
+          </Stack>
+          {[
+            { label: 'Dept', value: selectedData?.Dept ?? '-' },
+            { label: 'MachineId', value: selectedData?.MachineId ?? '-' },
+            { label: 'MaterialDesc', value: selectedData?.MaterialDesc ?? '-' },
+            { label: 'DimensionDesc', value: selectedData?.DimensionDesc ?? '-' },
+            { label: 'CAT', value: selectedData?.CAT ?? '-' },
+            { label: 'Period', value: periodRangeLabel },
+          ].map((f, i, arr) => (
+            <Box key={f.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.85, borderBottom: i < arr.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
+              <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>{f.label}:</Typography>
+              <Typography sx={{ ml: 'auto', fontWeight: 'bold', fontSize: 14, textAlign: 'right', wordBreak: 'break-word' }}>{f.value}</Typography>
+            </Box>
+          ))}
+        </Box>
+        <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: 2.5, mb: 3 }}>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+            <QueryStatsIcon sx={{ color: 'primary.main' }} />
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Statistics</Typography>
+          </Stack>
+          <Grid container spacing={1.5}>
+            {[
+              { label: 'No of Data', value: statisticsToShow?.Count ?? allData.length ?? '-' },
+              { label: 'Mean', value: statisticsToShow?.MeanValue ?? '-' },
+              { label: 'Std Dev', value: statisticsToShow?.StdValue != null ? Number(statisticsToShow.StdValue).toFixed(3) : '-' },
+              { label: 'LSL', value: allData[0]?.LSL ?? '-' },
+              { label: 'USL', value: allData[0]?.USL ?? '-' },
+              { label: 'Target', value: targetValue, color: 'success.main' },
+              { label: 'CP', value: statisticsToShow?.CPValue ?? '-', color: metricColor(statisticsToShow?.CPValue) },
+              { label: 'CPK', value: statisticsToShow?.CPKValue ?? '-', color: metricColor(statisticsToShow?.CPKValue) },
+              { label: 'PP', value: statisticsToShow?.PPValue ?? '-', color: metricColor(statisticsToShow?.PPValue) },
+            ].map((s) => (
+              <Grid item xs={4} key={s.label}>
+                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, textAlign: 'center', bgcolor: 'action.hover', height: '100%' }}>
+                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary', fontWeight: 600 }}>{s.label}:</Typography>
+                  <Typography sx={{ fontSize: 20, fontWeight: 'bold', mt: 0.25, color: s.color || 'text.primary' }}>{s.value}</Typography>
+                </Box>
               </Grid>
-              <Grid item xs={7}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{selectedData?.Dept ?? "-"}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={5}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>MachineId:</Typography>
-              </Grid>
-              <Grid item xs={7}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{selectedData?.MachineId ?? "-"}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={3}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>MaterialDesc:</Typography>
-              </Grid>
-              <Grid item xs={9}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{selectedData?.MaterialDesc ?? "-"}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={3}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>DimensionDesc:</Typography>
-              </Grid>
-              <Grid item xs={9}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{selectedData?.DimensionDesc ?? "-"}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={5}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>CAT:</Typography>
-              </Grid>
-              <Grid item xs={7}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{selectedData?.CAT ?? "-"}</Typography>
-              </Grid>
+            ))}
+            <Grid item xs={12}>
+              {(() => {
+                const v = Number(statisticsToShow?.PPKValue);
+                const has = statisticsToShow?.PPKValue !== undefined && statisticsToShow?.PPKValue !== null && !isNaN(v);
+                const status = !has
+                  ? { c: 'text.secondary', tint: 'action.hover', label: '' }
+                  : v >= 1.33
+                    ? { c: 'success.main', tint: 'rgba(46,125,50,0.12)', label: 'On Target (≥ 1.33)' }
+                    : v >= 1.0
+                      ? { c: 'warning.main', tint: 'rgba(237,108,2,0.14)', label: 'Marginal (1.00 – 1.33)' }
+                      : { c: 'error.main', tint: 'rgba(211,47,47,0.12)', label: 'Below Target (< 1.00)' };
+                return (
+                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5, textAlign: 'center', bgcolor: 'action.hover' }}>
+                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary', fontWeight: 600 }}>PPK:</Typography>
+                    <Typography sx={{ fontSize: 28, fontWeight: 'bold', color: status.c }}>{has ? statisticsToShow.PPKValue : '-'}</Typography>
+                    {status.label && (
+                      <Box sx={{ display: 'inline-block', mt: 0.75, px: 1.5, py: 0.25, borderRadius: 5, bgcolor: status.tint, color: status.c, fontSize: 12, fontWeight: 700 }}>
+                        {status.label}
+                      </Box>
+                    )}
+                  </Box>
+                );
+              })()}
             </Grid>
           </Grid>
-        </Box>
-        <Box mt={6}>
-          <Typography variant="h5" textAlign="center" gutterBottom>Statistics</Typography>
-          <Box sx={{ width: '100%', borderBottom: 1, borderColor: 'white', mb: 2 }} />
-          <Grid container spacing={1}>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>No of Data:</Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{statisticsToShow?.Count ?? allData.length ?? '-'}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>Mean:</Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{statisticsToShow?.MeanValue ?? allData[0]?.MeanValue ?? '-'}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>StdDev:</Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{(statisticsToShow?.StdValue ? Number(statisticsToShow.StdValue).toFixed(3) : '-')}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>LSL:</Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{allData[0]?.LSL ?? '-'}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>USL:</Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold' }}>{allData[0]?.USL ?? '-'}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>CP:</Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold', color: metricColor(statisticsToShow?.CPValue) }}>{statisticsToShow?.CPValue ?? '-'}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>CPK:</Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold', color: metricColor(statisticsToShow?.CPKValue) }}>{statisticsToShow?.CPKValue ?? '-'}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>PP:</Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold', color: metricColor(statisticsToShow?.PPValue) }}>{statisticsToShow?.PPValue ?? '-'}</Typography>
-              </Grid>
-            </Grid>
-            <Grid container item xs={12} alignItems="top">
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 'normal' }}>PPK:</Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="h5" sx={{ textAlign: 'right', fontWeight: 'bold', color: metricColor(statisticsToShow?.PPKValue) }}>{statisticsToShow?.PPKValue ?? '-'}</Typography>
-              </Grid>
-            </Grid>
-          </Grid>
-        </Box>
-        <Box mt={6}>
-          <Typography variant="h5" textAlign="center" gutterBottom>Furnace Data</Typography>
-          <Box sx={{ width: '100%', borderBottom: 1, borderColor: 'white', mb: 2 }} />
-          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
-            {/* MC2 Pie */}
-            <Box>
-              <Typography variant="h6" textAlign="center" sx={{ mb: 1 }}>Carburizing Furnace (TVC)</Typography>
-                <PieChart
-                  series={[
-                    {
-                      data: furnacePieDataSorted.length
-                        ? furnacePieDataSorted
-                        : [{ label: 'No Data', value: 1, color: '#E0E0E0', rawLabel: 'No Data' }],
-                      arcLabelMinAngle: 10,
-                      arcLabelRadius: '90%',
-                      highlightScope: { faded: 'global', highlighted: 'item' },
-                      cornerRadius: 6,
-                      paddingAngle: 2,
-                      innerRadius: 0,
-                      outerRadius: 100,
-                      cx: 130,
-                      cy: 130,
-                      color: (item) => item.color,
-                    },
-                  ]}
-                  sx={{
-                    [`& .${pieArcLabelClasses.root}`]: {
-                      fontWeight: 'bold',
-                      fontSize: 13,
-                      paintOrder: 'stroke',
-                      stroke: '#222',
-                      strokeWidth: 2,
-                      textShadow: '0 2px 6px #fff, 0 0 2px #fff',
-                    },
-                  }}
-                  slotProps={{ legend: { hidden: true } }}
-                  width={300}
-                  height={260}
-                  onItemClick={(event, d) => {
-                    const idx = d.dataIndex;
-                    const pie = furnacePieDataSorted[idx];
-                    if (!pie) return;
-                    // 如果已选中则取消
-                    if (clickedFurnace && clickedFurnace.type === 'MC2' && clickedFurnace.label === pie.rawLabel) {
-                      setClickedFurnace(null);
-                      console.log('deselected MC2 furnace:', pie.rawLabel);
-                    } else {
-                      setClickedFurnace({
-                        type: 'MC2',
-                        label: pie.rawLabel,
-                        color: pie.color,
-                      });
-                      console.log('selected MC2 furnace:', pie.rawLabel);
-                    }
-                  }}
-                />
-            </Box>
-            {/* MC4 Pie */}
-            <Box>
-              <Typography variant="h6" textAlign="center" sx={{ mb: 1 }}>Tempering Furnace (TAT)</Typography>
-              <PieChart
-                series={[
-                  {
-                    data: temperingPieDataSorted.length
-                      ? temperingPieDataSorted
-                      : [{ label: 'No Data', value: 1, color: '#E0E0E0', rawLabel: 'No Data' }],
-                    arcLabelMinAngle: 10,
-                    arcLabelRadius: '90%',
-                    highlightScope: { faded: 'global', highlighted: 'item' },
-                    cornerRadius: 6,
-                    paddingAngle: 2,
-                    innerRadius: 0,
-                    outerRadius: 100,
-                    cx: 130,
-                    cy: 130,
-                    color: (item) => item.color,
-                  },
-                ]}
-                onItemClick={(event, d) => {
-                  const idx = d.dataIndex;
-                  const pie = temperingPieDataSorted[idx];
-                  if (!pie) return;
-                  // 如果已选中则取消
-                  if (clickedFurnace && clickedFurnace.type === 'MC4' && clickedFurnace.label === pie.rawLabel) {
-                    setClickedFurnace(null);
-                    console.log('deselected MC4 furnace:', pie.rawLabel);
-                    console.log(clickedFurnace)
-                  } else {
-                    setClickedFurnace({
-                      type: 'MC4',
-                      label: pie.rawLabel,
-                      color: pie.color,
-                    });
-                    console.log('selected MC4 furnace:', pie.rawLabel);
-                    console.log(clickedFurnace)
-                  }
-                }}
-                sx={{
-                  [`& .${pieArcLabelClasses.root}`]: {
-                    fontWeight: 'bold',
-                    fontSize: 13,
-                    paintOrder: 'stroke',
-                    stroke: '#222',
-                    strokeWidth: 2,
-                    textShadow: '0 2px 6px #fff, 0 0 2px #fff',
-                  },
-                }}
-                slotProps={{ legend: { hidden: true } }}
-                width={300}
-                height={260}
-              />
-            </Box>
-          </Box>
         </Box>
       </Grid>
     </Grid>

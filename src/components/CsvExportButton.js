@@ -26,22 +26,31 @@ export const buildExportFilename = (materialDesc, period, fallback = 'PCM_Export
 
 // BRD export enrichment (H2 / SS2): emit a "General Information" block at the top
 // of the exported file. `generalInfo` is an array of { label, value } pairs.
-const CsvExportButton = ({ data, headers, filename = 'data.csv', generalInfo, sx, children, variant = 'outlined' }) => {
+// `headerLabels` optionally maps a column key to a friendly display label for the
+// CSV header row only — data is still looked up by the original key.
+const CsvExportButton = ({ data, headers, filename = 'data.csv', generalInfo, statistics, headerLabels, sx, children, variant = 'outlined' }) => {
   const handleExport = () => {
     if (!data || !data.length || !headers || !headers.length) return;
 
     const lines = [];
 
-    if (Array.isArray(generalInfo) && generalInfo.length) {
-      lines.push(escapeCsvField('General Information'));
-      generalInfo.forEach(({ label, value }) => {
+    // Emit a labelled block (heading + one "label,value" row per field, each on its own line).
+    const pushBlock = (heading, rows) => {
+      if (!Array.isArray(rows) || !rows.length) return;
+      lines.push(escapeCsvField(heading));
+      rows.forEach(({ label, value }) => {
         lines.push(`${escapeCsvField(label)},${escapeCsvField(value)}`);
       });
-      lines.push(''); // blank separator row between the info block and the table
-    }
+      lines.push(''); // blank separator row
+    };
+
+    pushBlock('General Information', generalInfo);
+    pushBlock('Statistics', statistics);
 
     const headerLine = headers
-      .map(h => h === 'CarbonizingFurnace' ? 'CarburizingFurnace' : h)
+      .map(h => (headerLabels && headerLabels[h] != null)
+        ? headerLabels[h]
+        : (h === 'CarbonizingFurnace' ? 'CarburizingFurnace' : h))
       .map(escapeCsvField)
       .join(',');
     lines.push(headerLine);

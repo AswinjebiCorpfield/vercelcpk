@@ -679,15 +679,12 @@ const MonthlyHistoricalOverallLots = () => {
               <span>
                 <CsvExportButton
                   data={filledFilteredData}
-                  headers={tableHeaders}
+                  // Export omits the "Analysis" column (UI-only drill-in buttons).
+                  headers={tableHeaders.filter(h => h !== 'Analysis')}
                   generalInfo={[
                     { label: 'Report', value: 'Historical Monthly Measurement Table' },
-                    { label: 'Dept', value: filters.Dept || '' },
-                    { label: 'MachineId', value: filters.MachineId || '' },
-                    { label: 'MaterialDesc', value: filters.MaterialDesc || '' },
-                    { label: 'DimensionDesc', value: filters.DimensionDesc || '' },
-                    { label: 'CAT', value: Array.isArray(filters.CAT) ? filters.CAT.join(', ') : (filters.CAT || '') },
                     { label: 'Period', value: [filters.StartMonth, filters.EndMonth].filter(Boolean).join(' – ') },
+                    { label: 'Dept', value: filters.Dept || '' },
                   ]}
                   filename={buildExportFilename(filters.MaterialDesc, [filters.StartMonth, filters.EndMonth].filter(Boolean).join('-'), 'Historical_Data')}
                   sx={{ px: 1.5, height: 36, textTransform: 'none', whiteSpace: 'nowrap', color: 'text.secondary', borderColor: 'divider' }}

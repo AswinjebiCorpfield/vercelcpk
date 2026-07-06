@@ -727,9 +727,6 @@ const IndividualLotClickedTable = () => {
                             { label: 'Report', value: 'Individual Lot Measurement Table' },
                             { label: 'MeasDate', value: formatMonthYear(date?.substring(0, 7)) },
                             { label: 'Dept', value: pieFilteredData[0]?.Dept || '' },
-                            { label: 'MachineId', value: pieFilteredData[0]?.MachineId || '' },
-                            { label: 'MaterialDesc', value: pieFilteredData[0]?.MaterialDesc || '' },
-                            { label: 'CAT', value: pieFilteredData[0]?.CAT || '' },
                         ]}
                         sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
                     >
@@ -747,7 +744,14 @@ const IndividualLotClickedTable = () => {
                             <Table
                                 sx={{
                                     '& .MuiTableCell-root': { fontSize: "0.82rem !important" },
-                                    '& .MuiTableHead-root .MuiTableCell-root': { fontSize: "0.82rem !important",fontWeight:"bold !important" },
+                                    // Branded header band (nav indigo + light text; readable in light & dark).
+                                    '& .MuiTableHead-root .MuiTableCell-root': {
+                                        fontSize: "0.82rem !important", fontWeight: "bold !important",
+                                        backgroundColor: 'custom.nav', color: 'custom.navText',
+                                    },
+                                    '& .MuiTableHead-root .MuiTableSortLabel-root, & .MuiTableHead-root .MuiTableSortLabel-root:hover, & .MuiTableHead-root .MuiTableSortLabel-root.Mui-active': { color: 'custom.navText' },
+                                    '& .MuiTableHead-root .MuiTableSortLabel-icon': { color: 'custom.navText !important' },
+                                    '& .MuiTableHead-root .MuiIconButton-root': { color: 'custom.navText' },
                                     '& .MuiTableSortLabel-root': { fontSize: "0.82rem !important" },
                                 }}
                             >

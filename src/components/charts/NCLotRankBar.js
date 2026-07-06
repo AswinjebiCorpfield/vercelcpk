@@ -61,33 +61,16 @@ const serializeParams = (params) => {
 };
 
 // --- Key Focus summary enrichment (BRD 3.1) --------------------------------
-// The summary matrix needs a Carburizing/Tempering furnace breakdown per
-// material. The current /overall-lots-nc-rank endpoint does NOT supply it (it
-// counts dimension rows, not Individual-Lot keys, and has no furnace columns);
-// the new KF6 ranking endpoint will. Until then we derive a stable, illustrative
-// furnace pairing from the material key so the demo matrix renders complete.
-// Replace deriveFurnaces() with the real endpoint fields when KF6 is built.
-const TVC_POOL = ['TVC1', 'TVC2', 'TVC3', 'TVC4', 'TVC5'];
-const TAT_POOL = ['TAT1', 'TAT2', 'TAT3', 'TAT4'];
-const hashString = (s) => {
-    let h = 0;
-    for (let i = 0; i < (s || '').length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-    return h;
-};
-const deriveFurnaces = (material, pool) => {
-    const h = hashString(material);
-    const n = 1 + (h % 2); // 1 or 2 furnaces, deterministic per material
-    const picks = [];
-    for (let i = 0; i < n; i++) picks.push(pool[(h + i * 7) % pool.length]);
-    return Array.from(new Set(picks)).join(', ');
-};
+// Carburizing / Tempering furnace columns come straight from the API
+// (/overall-lots-nc-rank now returns real CarburizingFurnace / TemperingFurnace
+// aggregated from BatchMC2 / BatchMC4). No client-side fabrication.
 
 // Column config for the Material Description Summary table. `field` is the sort key
 // (null = not sortable — action-button columns).
 const MATERIAL_COLUMNS = [
     { label: 'Material Description', field: 'MaterialDesc', numeric: false },
-    { label: 'Carburizing Furnace', field: '__tvc', numeric: false },
-    { label: 'Tempering Furnace', field: '__tat', numeric: false },
+    { label: 'Carburizing Furnace', field: 'CarburizingFurnace', numeric: false },
+    { label: 'Tempering Furnace', field: 'TemperingFurnace', numeric: false },
     { label: 'Total (Lots)', field: 'Total_Count', numeric: true },
     { label: 'Ppk < 1 (Lots)', field: 'PPK_NC_Count', numeric: true },
     { label: 'Ppk < 1 %', field: 'PPK_NC_Percentage', numeric: true },
@@ -95,11 +78,11 @@ const MATERIAL_COLUMNS = [
     { label: 'Historical Analysis', field: null },
 ];
 
-// Sort value for a row given a column field (handles derived furnace columns).
+// Sort value for a row given a column field.
 const materialSortValue = (row, field) => {
     switch (field) {
-        case '__tvc': return deriveFurnaces(row.MaterialDesc, TVC_POOL) || '';
-        case '__tat': return deriveFurnaces(row.MaterialDesc, TAT_POOL) || '';
+        case 'CarburizingFurnace': return (row.CarburizingFurnace || '').toLowerCase();
+        case 'TemperingFurnace': return (row.TemperingFurnace || '').toLowerCase();
         case 'Total_Count': return Number(row.Total_Count) || 0;
         case 'PPK_NC_Count': return Number(row.PPK_NC_Count) || 0;
         case 'PPK_NC_Percentage': return Number(row.PPK_NC_Percentage) || 0;
@@ -124,15 +107,22 @@ const NCLotRankBar = () => {
     const [allMonths, setAllMonths] = useState({ StartMonth: [], EndMonth: [] });
     const { state, dispatch } = useValue();
 
-    // 直接用 context 的 filters，去掉本地 filters 状态
-    const filters = useMemo(() => state.filters || {
-        Dept: 'HT',
-        MachineId: 'HTFDCATE-L1',
-        MaterialDesc: '',
-        DimensionDesc: '',
-        CAT: ['CTQ', 'CTP', 'NOR'],
-        StartMonth: '',
-        EndMonth: '',
+    // 直接用 context 的 filters，去掉本地 filters 状态。
+    // Key Focus is a Heat-Treatment module: furnaces (TVC/TAT) and HRA/HRC hardness
+    // only exist for Dept='HT'. Pin Dept to 'HT' whenever it isn't explicitly set to
+    // another dept — otherwise the ranking is dominated by Stamping parts that have no
+    // furnace data, and drilling into a bar opens an empty HRA/HRC scatter.
+    const filters = useMemo(() => {
+        const base = state.filters || {
+            Dept: 'HT',
+            MachineId: '',
+            MaterialDesc: '',
+            DimensionDesc: '',
+            CAT: ['CTQ', 'CTP', 'NOR'],
+            StartMonth: '',
+            EndMonth: '',
+        };
+        return { ...base, Dept: base.Dept || 'HT' };
     }, [state.filters]);
 
     // 处理筛选变化
@@ -147,8 +137,9 @@ const NCLotRankBar = () => {
     };
 
     const handleClearFilters = () => {
+        // Keep Dept pinned to 'HT' on clear — Key Focus is HT-scoped (see filters memo).
         const cleared = {
-            Dept: '',
+            Dept: 'HT',
             MachineId: '',
             MaterialDesc: '',
             DimensionDesc: '',
@@ -222,11 +213,11 @@ useEffect(() => {
     let rows = materialNCData;
     if (q) {
       rows = rows.filter(r => {
-        const tvc = deriveFurnaces(r.MaterialDesc, TVC_POOL) || '';
-        const tat = deriveFurnaces(r.MaterialDesc, TAT_POOL) || '';
+        const tvc = (r.CarburizingFurnace || '').toLowerCase();
+        const tat = (r.TemperingFurnace || '').toLowerCase();
         return (r.MaterialDesc || '').toLowerCase().includes(q)
-          || tvc.toLowerCase().includes(q)
-          || tat.toLowerCase().includes(q);
+          || tvc.includes(q)
+          || tat.includes(q);
       });
     }
     if (!orderBy) return rows;
@@ -247,7 +238,7 @@ useEffect(() => {
     } else {
       setOrderBy(field);
       // Text columns default to A→Z, numeric columns to high→low.
-      setOrder(field === 'MaterialDesc' || field === '__tvc' || field === '__tat' ? 'asc' : 'desc');
+      setOrder(field === 'MaterialDesc' || field === 'CarburizingFurnace' || field === 'TemperingFurnace' ? 'asc' : 'desc');
     }
     setPage(0);
   };
@@ -600,8 +591,8 @@ useEffect(() => {
                                                 return (
                                                     <TableRow key={row.MaterialDesc || i} hover sx={{ '&:nth-of-type(odd)': { backgroundColor: 'action.hover' } }}>
                                                         <TableCell sx={{ color: 'text.primary', fontWeight: 600, whiteSpace: 'nowrap' }}>{row.MaterialDesc}</TableCell>
-                                                        <TableCell sx={{ color: 'text.secondary' }}>{deriveFurnaces(row.MaterialDesc, TVC_POOL)}</TableCell>
-                                                        <TableCell sx={{ color: 'text.secondary' }}>{deriveFurnaces(row.MaterialDesc, TAT_POOL)}</TableCell>
+                                                        <TableCell sx={{ color: 'text.secondary' }}>{row.CarburizingFurnace || '-'}</TableCell>
+                                                        <TableCell sx={{ color: 'text.secondary' }}>{row.TemperingFurnace || '-'}</TableCell>
                                                         <TableCell sx={{ color: 'text.primary' }}>{row.Total_Count}</TableCell>
                                                         <TableCell sx={{ color: 'error.main', fontWeight: 700 }}>{row.PPK_NC_Count}</TableCell>
                                                         <TableCell sx={{ color: Number.isFinite(pct) && pct >= 50 ? '#dc2626' : '#d97706', fontWeight: 700 }}>
@@ -643,7 +634,7 @@ useEffect(() => {
                                     sx={{ color: 'text.secondary' }}
                                 />
                                 <Typography variant="caption" sx={{ color: 'grey.500', display: 'block', mt: 1.5 }}>
-                                    Ppk &lt; 1 (Lots) counts Individual-Lot keys with Ppk &lt; 0.9949; Ppk &lt; 1 % = Ppk &lt; 1 (Lots) ÷ Total (Lots). Furnace breakdown is illustrative pending the KF6 ranking endpoint.
+                                    Ppk &lt; 1 (Lots) counts Individual-Lot keys with Ppk &lt; 0.9949; Ppk &lt; 1 % = Ppk &lt; 1 (Lots) ÷ Total (Lots). Carburizing / Tempering furnaces are the material's furnaces sourced from the database.
                                 </Typography>
                             </Card>
                         </Box>

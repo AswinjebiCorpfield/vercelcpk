@@ -19,7 +19,7 @@ import { useColorMode } from '../context/ColorModeContext';
 
 // Primary analytics modules, in a logical left-to-right order.
 const NAV_ITEMS = [
-  { to: '/', label: 'Overview', icon: <HomeIcon fontSize="small" />, end: true },
+  { to: '/', label: 'Overview', icon: <HomeIcon fontSize="small" />, end: true, locked: true }, // BRD S3: Overview module locked (non-clickable)
   { to: '/lot-cpk-bar', label: 'Individual Lot CPK', icon: <BarChartIcon fontSize="small" /> },
   { to: '/lots-cpk-ppk-bar', label: 'Dimension CPK PPK', icon: <AssessmentIcon fontSize="small" /> },
   { to: '/lots-historical-summary', label: 'Historical Dimension', icon: <SummarizeIcon fontSize="small" /> },
@@ -135,14 +135,25 @@ const NavBar = () => {
             {item.label === 'Data Purge' && (
               <Divider orientation="vertical" flexItem sx={{ mx: 0.75, my: 1 }} />
             )}
-            <NavLink to={item.to} end={item.end} style={{ textDecoration: 'none' }}>
-              {({ isActive }) => (
-                <Box sx={tabSx(isActive)}>
-                  {item.icon}
-                  {item.label}
-                </Box>
-              )}
-            </NavLink>
+            {item.locked ? (
+              <Box
+                aria-disabled="true"
+                title="Locked"
+                sx={{ ...tabSx(false), opacity: 0.4, cursor: 'not-allowed', '&:hover': { color: 'text.secondary', backgroundColor: 'transparent' } }}
+              >
+                {item.icon}
+                {item.label}
+              </Box>
+            ) : (
+              <NavLink to={item.to} end={item.end} style={{ textDecoration: 'none' }}>
+                {({ isActive }) => (
+                  <Box sx={tabSx(isActive)}>
+                    {item.icon}
+                    {item.label}
+                  </Box>
+                )}
+              </NavLink>
+            )}
           </React.Fragment>
         ))}
       </Box>
@@ -150,9 +161,15 @@ const NavBar = () => {
       {/* Mobile module menu */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
         {NAV_ITEMS.map((item) => (
-          <MenuItem key={item.to} onClick={() => setAnchorEl(null)} component={Link} to={item.to}>
-            {item.label}
-          </MenuItem>
+          item.locked ? (
+            <MenuItem key={item.to} disabled>
+              {item.label}
+            </MenuItem>
+          ) : (
+            <MenuItem key={item.to} onClick={() => setAnchorEl(null)} component={Link} to={item.to}>
+              {item.label}
+            </MenuItem>
+          )
         ))}
         <MenuItem onClick={() => setAnchorEl(null)} component="a" href={SPC_PORTAL_URL}>SPC Portal</MenuItem>
       </Menu>

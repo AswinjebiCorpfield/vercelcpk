@@ -244,7 +244,7 @@ const HistogramComponent = ({ tableData, LSL, USL }) => {
   );
 };
 
-const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData }) => {
+const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, statistics }) => {
   const MAX_NC = 0.9949; // CP低于等于该值时标红
   const [loading, setLoading] = useState(false);
   const [lotData, setLotData] = useState([]);
@@ -368,7 +368,7 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData }
                 'CP',
               ]}
               generalInfo={[
-                { label: 'Report', value: 'Histogram Distribution — Lot Data' },
+                { label: 'Report', value: 'Subsample Distribution — Lot Data' },
                 { label: 'MeasDate', value: Period },
                 { label: 'Dept', value: row?.Dept || '' },
                 { label: 'MachineId', value: row?.MachineId || '' },
@@ -376,6 +376,7 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData }
                 { label: 'DimensionDesc', value: row?.DimensionDesc || '' },
                 { label: 'CAT', value: row?.CAT || '' },
               ]}
+              statistics={statistics}
               filename={buildExportFilename(row?.MaterialDesc, Period, 'Lot_Data')}
             >
               Download Lot Data
@@ -411,13 +412,14 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData }
                 { label: 'DimensionDesc', value: row?.DimensionDesc || '' },
                 { label: 'CAT', value: row?.CAT || '' },
               ]}
+              statistics={statistics}
               filename={buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data')}
             >
               Download Subsample Data
             </CsvExportButton>
             <TextField
               size="small"
-              placeholder="Search lot no…"
+              placeholder="Search…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               InputProps={{
@@ -1090,6 +1092,31 @@ const OverallLotsDistributionTable = () => {
                 : Period)))
     : '';
 
+  // BRD H (Individual Lot Cpk): the lot-level general-info date field is the
+  // measurement date — labelled "MeasDate" and shown as e.g. "Jan 14, 2026".
+  const formattedMeasDate = row?.MeasDate
+    ? new Date(row.MeasDate).toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit' })
+    : '';
+
+  // BRD (Individual Lot Cpk & Dimension Cpk Ppk): the exported file carries a
+  // "Statistics" block (one field per row) alongside "General Information".
+  // Mirrors the on-screen Statistics panel. Pp/Ppk only when displayPP (Dimension).
+  const fmtMetric = (v) => (v != null && !isNaN(v)) ? Number(v).toFixed(3) : (v ?? '-');
+  const statisticsForExport = [
+    { label: 'No of Data', value: (pieFilter.CarbonizingFurnace || pieFilter.TemperingFurnace) ? validFilteredTableData.length : (row?.NO_OF_DATA ?? '-') },
+    { label: 'Mean', value: metrics?.MeanValue ?? '-' },
+    { label: 'Std Dev', value: metrics?.StdValue ?? '-' },
+    { label: 'LSL', value: statsLSLDisplay },
+    { label: 'USL', value: statsUSLDisplay },
+    { label: 'Target', value: (isVisibleLSL(statsLSLParsed) && isVisibleUSL(statsUSLParsed)) ? ((statsLSLParsed + statsUSLParsed) / 2) : '-' },
+    { label: 'Cp', value: fmtMetric(metrics?.CPValue) },
+    { label: 'Cpk', value: fmtMetric(metrics?.CPKValue) },
+    ...(displayPP ? [
+      { label: 'Pp', value: fmtMetric(metrics?.PPValue) },
+      { label: 'Ppk', value: fmtMetric(metrics?.PPKValue) },
+    ] : []),
+  ];
+
   return (
     <Box sx={{
         p: { xs: 2, md: 3 },
@@ -1148,13 +1175,17 @@ const OverallLotsDistributionTable = () => {
                 <Box>
                   {[
                     row?.LotNo && { icon: <LocalOfferIcon fontSize="small" />, label: 'LotNo', value: row.LotNo },
-                    Period && { icon: <CalendarMonthIcon fontSize="small" />, label: 'Period', value: formattedPeriod },
+                    (row?.LotNo
+                      ? (formattedMeasDate && { icon: <CalendarMonthIcon fontSize="small" />, label: 'MeasDate', value: formattedMeasDate })
+                      : (Period && { icon: <CalendarMonthIcon fontSize="small" />, label: 'Period', value: formattedPeriod })),
                     row?.Dept && { icon: <GroupsIcon fontSize="small" />, label: 'Dept', value: row.Dept },
                     row?.MachineId && { icon: <MemoryIcon fontSize="small" />, label: 'MachineId', value: row.MachineId },
                     row?.MaterialDesc && { icon: <Inventory2Icon fontSize="small" />, label: 'MaterialDesc', value: row.MaterialDesc },
                     row?.DimensionDesc && { icon: <StraightenIcon fontSize="small" />, label: 'DimensionDesc', value: row.DimensionDesc },
                     row?.CAT && { icon: <LocalOfferIcon fontSize="small" />, label: 'CAT', value: row.CAT },
-                    row?.NO_OF_DATA && { icon: <StorageIcon fontSize="small" />, label: 'No Of Data', value: (pieFilter.CarbonizingFurnace || pieFilter.TemperingFurnace) ? validFilteredTableData.length : row.NO_OF_DATA },
+                    // No Of Data is omitted from the Individual Lot general info (redundant with the
+                    // Statistics panel); kept for the Dimension panel per BRD (added below CAT).
+                    !row?.LotNo && row?.NO_OF_DATA && { icon: <StorageIcon fontSize="small" />, label: 'No Of Data', value: (pieFilter.CarbonizingFurnace || pieFilter.TemperingFurnace) ? validFilteredTableData.length : row.NO_OF_DATA },
                   ].filter(Boolean).map((f, i, arr) => (
                     <Box key={f.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.9, borderBottom: i < arr.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
                       <Box sx={{ color: 'text.secondary', display: 'flex' }}>{f.icon}</Box>
@@ -1256,11 +1287,13 @@ const OverallLotsDistributionTable = () => {
                 { label: 'DimensionDesc', value: row?.DimensionDesc || '' },
                 { label: 'CAT', value: row?.CAT || '' },
               ]}
+              statistics={statisticsForExport}
               filename={buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data')}
-              sx={{ flexShrink: 0, minWidth: 44, px: 1, height: 34 }}
+              sx={{ flexShrink: 0, px: 1.5, height: 34, whiteSpace: 'nowrap', textTransform: 'none' }}
               title="Download Subsample Data"
             >
-              <DownloadIcon fontSize="small" />
+              <DownloadIcon fontSize="small" sx={{ mr: 0.5 }} />
+              Download Subsample Data
             </CsvExportButton>
             <TextField
               size="small"
@@ -1349,7 +1382,7 @@ const OverallLotsDistributionTable = () => {
       {!row?.LotNo && (
         <Grid item xs={12}>
           <Box sx={{ width: '100%', boxSizing: 'border-box', p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-            <IndividualLotTableGeneralInfo row={row} Period={Period} pieFilter={pieFilter} subsampleData={filteredTableData} />
+            <IndividualLotTableGeneralInfo row={row} Period={Period} pieFilter={pieFilter} subsampleData={filteredTableData} statistics={statisticsForExport} />
           </Box>
         </Grid>
       )}
