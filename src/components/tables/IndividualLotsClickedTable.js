@@ -5,11 +5,12 @@ import { formatMetric } from '../../utils/metricFormat';
 import axios from 'axios';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import Button from '@mui/material/Button';
-import { useNavigate } from 'react-router-dom';
+import useDrilldownNavigate from '../../utils/useDrilldownNavigate';
 import TableSortLabel from '@mui/material/TableSortLabel';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
 import Popover from '@mui/material/Popover';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
@@ -115,7 +116,7 @@ const IndividualLotClickedTable = () => {
         TemperingFurnace: null,
         MaterialDesc: null
     });
-    const navigate = useNavigate();
+    const drill = useDrilldownNavigate();
     const { date, periodType, filters, seriesId } = state || {};
 
     useEffect(() => {
@@ -436,6 +437,15 @@ const IndividualLotClickedTable = () => {
         setPage(0);
     };
 
+    // A column is "actively filtered" when it has a non-empty text value or a min/max range (CPK/CP).
+    const isColumnFiltered = (colId) => {
+        const v = filterValues[colId];
+        if (v == null || v === '') return false;
+        if (typeof v === 'object') return (v.min ?? '') !== '' || (v.max ?? '') !== '';
+        return true;
+    };
+    const hasActiveFilters = Object.keys(filterValues).some(k => isColumnFiltered(k));
+
     return (
         <Box sx={{ mt: { xs: 1, sm: 1.5, md: 2 }, mb: { xs: 2, sm: 3, md: 5 }, px: { xs: 1, sm: 1.5, md: 2 }, display: 'flex', gap: { xs: 1, md: 3 }, flexWrap: { xs: 'wrap', md: 'nowrap' }, boxSizing: 'border-box', width: '100%', maxWidth: '100%' }}>
             {/* Filter pie panel on the left, side-by-side with the table (matches OverallLotsClickedTable). */}
@@ -718,7 +728,18 @@ const IndividualLotClickedTable = () => {
                         }
                     </Typography>
                   </Box>
-                  {!loading && pieFilteredData.length > 0 && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                    {hasActiveFilters && (
+                        <IconButton
+                            size="small"
+                            title="Clear all column filters"
+                            onClick={() => { setFilterValues({}); setPage(0); }}
+                            sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+                        >
+                            <FilterAltOffIcon fontSize="small" />
+                        </IconButton>
+                    )}
+                    {!loading && pieFilteredData.length > 0 && (
                     <CsvExportButton
                         data={pieFilteredData}
                         headers={columns.filter(col => col.id !== 'FurtherAnalysis').map(col => col.id)}
@@ -732,13 +753,14 @@ const IndividualLotClickedTable = () => {
                     >
                         Download Individual Lot Data
                     </CsvExportButton>
-                  )}
+                    )}
+                  </Box>
                 </Box>
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
                         <CircularProgress disableShrink color="primary" sx={{ height: '100vh' }} />
                     </Box>
-                ) : pieFilteredData.length > 0 ? (
+                ) : queryData.length > 0 ? (
                     <>
                         <TableContainer component={Paper}>
                             <Table
@@ -780,7 +802,7 @@ const IndividualLotClickedTable = () => {
                                                             onClick={e => handleFilterIconClick(e, col.id)}
                                                             sx={{ ml: 1 }}
                                                         >
-                                                            <FilterListIcon fontSize="small" />
+                                                            <FilterListIcon fontSize="small" sx={{ color: isColumnFiltered(col.id) ? '#FFC107' : 'inherit' }} />
                                                         </IconButton>
                                                     )}
                                                 </Box>
@@ -793,7 +815,7 @@ const IndividualLotClickedTable = () => {
                                         <TableRow key={index}  
                                         style={{ cursor: 'pointer' }}
                                         onClick={() => {
-                                                        navigate('/lots-sample-distribution-table', {
+                                                        drill('lots-sample-distribution-table', {
                                                             state: { 
                                                                 Period:date,
                                                                 row,
@@ -830,15 +852,15 @@ const IndividualLotClickedTable = () => {
                                             <TableCell sx={{ minWidth: 39 }}>{row.NO_OF_DATA}</TableCell>
                                             <TableCell sx={{ minWidth: 49 }}>{row.CarbonizingFurnace}</TableCell>
                                             <TableCell sx={{ minWidth: 59 }}>{row.TemperingFurnace}</TableCell>
-                                            <TableCell sx={{ padding: 0 }}>
+                                            <TableCell sx={{ p: 0.5, textAlign: 'center' }}>
                                                 <Button
-                                                    startIcon={<AssessmentIcon />}
                                                     variant="contained"
                                                     color="primary"
-                                                    sx={{ color: 'darkblue', height: '90%', width: '100%' }}
+                                                    size="small"
+                                                    sx={{ minWidth: 0, width: 40, height: 32, p: 0 }}
                                                     onClick={(e) => {
                                                         e.stopPropagation(); // don't also fire the row's onClick (double history entry)
-                                                        navigate('/lots-sample-distribution-table', {
+                                                        drill('lots-sample-distribution-table', {
                                                             state: {
                                                                 Period:date,
                                                                 row,
@@ -846,10 +868,21 @@ const IndividualLotClickedTable = () => {
                                                         });
                                                     }}
                                                 >
+                                                    <AssessmentIcon fontSize="small" />
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
+                                    {/* Keep the header (and its filter-popover anchors) mounted when a
+                                        column filter narrows the result to zero rows — otherwise the
+                                        popover loses its anchor and jumps to the top-left corner. */}
+                                    {pieFilteredData.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={columns.length} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                                                No matching results.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
                         </TableContainer>

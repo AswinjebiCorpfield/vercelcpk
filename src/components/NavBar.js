@@ -14,7 +14,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LaunchIcon from '@mui/icons-material/Launch';
 import DarkModeIcon from '@mui/icons-material/DarkModeOutlined';
 import LightModeIcon from '@mui/icons-material/LightModeOutlined';
-import { NavLink, Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useColorMode } from '../context/ColorModeContext';
 
 // Primary analytics modules, in a logical left-to-right order.
@@ -27,6 +27,30 @@ const NAV_ITEMS = [
   { to: '/data-purge-config', label: 'Data Purge', icon: <SettingsIcon fontSize="small" /> },
 ];
 
+// Top-level modules the user can land on directly via the tab bar.
+const SECTION_ROOTS = new Set([
+  '/lot-cpk-bar', '/lots-cpk-ppk-bar', '/lots-historical-summary', '/nc-lot-bar', '/data-purge-config',
+]);
+
+// Cold-load fallback: which tab to light up when a drill-in / detail page is opened
+// directly (URL paste / refresh) with no navigation history to infer the origin from.
+// During real click-through the origin module is remembered instead (see NavBar),
+// which is what keeps the *correct* tab active for pages shared by several modules
+// (e.g. /lots-sample-distribution-table is reachable from four different modules).
+const SECTION_BY_PATH = {
+  '/': '/lot-cpk-bar',
+  '/lot-cpk-bar': '/lot-cpk-bar',
+  '/individual-lot-clicked-table': '/lot-cpk-bar',
+  '/lots-cpk-ppk-bar': '/lots-cpk-ppk-bar',
+  '/overall-lots-clicked-table': '/lots-cpk-ppk-bar',
+  '/subsample-scatter': '/lots-cpk-ppk-bar',
+  '/lots-sample-distribution-table': '/lots-cpk-ppk-bar',
+  '/lots-historical-summary': '/lots-historical-summary',
+  '/nc-lot-bar': '/nc-lot-bar',
+  '/nc-scatter-bar-chart': '/nc-lot-bar',
+  '/data-purge-config': '/data-purge-config',
+};
+
 const SPC_PORTAL_URL = 'https://spl-spc02.shimano.com.sg/SPC_Portal/login';
 
 const NavBar = () => {
@@ -34,6 +58,19 @@ const NavBar = () => {
   const { custom } = theme.palette;
   const { mode, toggle } = useColorMode();
   const [anchorEl, setAnchorEl] = React.useState(null);
+  const location = useLocation();
+
+  // Resolve which module tab should be active — including drill-in pages opened
+  // from a chart. URLs are hierarchical (see utils/useDrilldownNavigate), so the
+  // FIRST path segment is the module the user drilled in from, e.g.
+  // /lots-cpk-ppk-bar/overall-lots-clicked-table/... → Dimension CPK PPK.
+  // SECTION_BY_PATH is only a fallback for legacy flat single-segment URLs.
+  const path = location.pathname;
+  const firstSeg = '/' + (path.split('/').filter(Boolean)[0] || '');
+  const activeSection =
+    path === '/' ? '/lot-cpk-bar'
+      : SECTION_ROOTS.has(firstSeg) ? firstSeg
+        : (SECTION_BY_PATH[path] || null);
 
   const tabSx = (isActive) => ({
     display: 'flex', alignItems: 'center', gap: 0.75,
@@ -145,14 +182,10 @@ const NavBar = () => {
                 {item.label}
               </Box>
             ) : (
-              <NavLink to={item.to} end={item.end} style={{ textDecoration: 'none' }}>
-                {({ isActive }) => (
-                  <Box sx={tabSx(isActive)}>
-                    {item.icon}
-                    {item.label}
-                  </Box>
-                )}
-              </NavLink>
+              <Box component={Link} to={item.to} sx={tabSx(activeSection === item.to)}>
+                {item.icon}
+                {item.label}
+              </Box>
             )}
           </React.Fragment>
         ))}

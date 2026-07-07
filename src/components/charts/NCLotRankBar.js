@@ -4,10 +4,12 @@ import axios from 'axios';
 import { Box, Card, CardContent, CircularProgress, Grid, Typography, TextField, Button, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, TableSortLabel, InputAdornment, Tooltip, IconButton } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import HistoryIcon from '@mui/icons-material/History';
 import Autocomplete from '@mui/material/Autocomplete';
 import './NCLotRankBar.css';
 import { useValue } from '../../context/ContextProvider';
-import { useNavigate } from 'react-router-dom';
+import useDrilldownNavigate from '../../utils/useDrilldownNavigate';
 
 function formatMonthYear(monthStr) {
     if (!monthStr) return '';
@@ -74,8 +76,7 @@ const MATERIAL_COLUMNS = [
     { label: 'Total (Lots)', field: 'Total_Count', numeric: true },
     { label: 'Ppk < 1 (Lots)', field: 'PPK_NC_Count', numeric: true },
     { label: 'Ppk < 1 %', field: 'PPK_NC_Percentage', numeric: true },
-    { label: 'HRA / HRC Analysis', field: null },
-    { label: 'Historical Analysis', field: null },
+    { label: 'Analysis', field: null },
 ];
 
 // Sort value for a row given a column field.
@@ -91,7 +92,7 @@ const materialSortValue = (row, field) => {
 };
 
 const NCLotRankBar = () => {
-    const navigate = useNavigate();
+    const drill = useDrilldownNavigate();
     const [machineNCData, setMachineNCData] = useState([]);
     const [materialNCData, setMaterialNCData] = useState([]);
     const [page, setPage] = useState(0);
@@ -534,7 +535,7 @@ useEffect(() => {
                                         barLabel={({ value }) => (value ? String(value) : '')}
                                         onItemClick={(event, d) => {
                                             const row = materialNCData[d.dataIndex];
-                                            if (row) navigate('/nc-scatter-bar-chart', { state: { value: row.MaterialDesc, filters: { ...filters, MaterialDesc: row.MaterialDesc }, source: 'MaterialDesc' } });
+                                            if (row) drill('nc-scatter-bar-chart', { state: { value: row.MaterialDesc, filters: { ...filters, MaterialDesc: row.MaterialDesc }, source: 'MaterialDesc' } });
                                         }}
                                     />
                                 )}
@@ -599,16 +600,16 @@ useEffect(() => {
                                                             {Number.isFinite(pct) ? pct.toFixed(2) : row.PPK_NC_Percentage}%
                                                         </TableCell>
                                                         <TableCell>
-                                                            <Button size="small" variant="contained" sx={{ backgroundColor: '#0e7490', textTransform: 'none', '&:hover': { backgroundColor: '#0b5566' } }}
-                                                                onClick={() => navigate('/nc-scatter-bar-chart', { state: { value: row.MaterialDesc, filters: { ...filters, MaterialDesc: row.MaterialDesc }, source: 'MaterialDesc' } })}>
-                                                                HRA / HRC
-                                                            </Button>
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <Button size="small" variant="outlined" sx={{ textTransform: 'none', color: 'primary.main', borderColor: 'divider', '&:hover': { borderColor: '#5a6b8c' } }}
-                                                                onClick={() => navigate('/overall-lots-clicked-table', { state: { ...filters, MaterialDesc: row.MaterialDesc, datatype: 'MaterialDesc' } })}>
-                                                                Historical
-                                                            </Button>
+                                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+                                                                <Button size="small" startIcon={<AssessmentIcon />} variant="contained" color="primary" sx={{ color: 'darkblue', textTransform: 'none' }}
+                                                                    onClick={() => drill('nc-scatter-bar-chart', { state: { value: row.MaterialDesc, filters: { ...filters, MaterialDesc: row.MaterialDesc }, source: 'MaterialDesc' } })}>
+                                                                    HRA / HRC
+                                                                </Button>
+                                                                <Button size="small" startIcon={<HistoryIcon />} variant="contained" color="info" sx={{ textTransform: 'none' }}
+                                                                    onClick={() => drill('overall-lots-clicked-table', { state: { ...filters, MaterialDesc: row.MaterialDesc, datatype: 'MaterialDesc' } })}>
+                                                                    Historical
+                                                                </Button>
+                                                            </Box>
                                                         </TableCell>
                                                     </TableRow>
                                                 );

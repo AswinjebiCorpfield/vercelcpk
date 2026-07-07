@@ -6,7 +6,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
 import KpiTile, { KPI } from './KpiTile';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import useDrilldownNavigate from '../../utils/useDrilldownNavigate';
 import './NCLotRankBar.css';
 import { useValue } from '../../context/ContextProvider'; // 路径按你的项目结构调整
 import { TimeSeriesContext } from '../../context/TimeSeriesContext';
@@ -55,7 +55,7 @@ const LotsCPPKBarChart = () => {
     
     return defaultFilters;
   });
-  const navigate = useNavigate();
+  const drill = useDrilldownNavigate();
   const [allOptions, setAllOptions] = useState({
     Dept: [],
     MachineId: [],
@@ -381,7 +381,7 @@ useEffect(() => {
 
       if (period) {
         // 注意：resultType 你目前用的是小写 'ac'/'nc'，确保下一页也按同样约定
-        navigate('/overall-lots-clicked-table', {
+        drill('overall-lots-clicked-table', {
           state: { date: period, metric, resultType, ...filters, seriesId }
         });
       }

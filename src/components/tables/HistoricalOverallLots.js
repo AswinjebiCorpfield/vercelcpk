@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import useDrilldownNavigate from '../../utils/useDrilldownNavigate';
 import {
   Box,
   CircularProgress,
@@ -208,7 +208,7 @@ const MonthlyHistoricalOverallLots = () => {
   }, [monthRangeFilters]);
   
 
-  const navigate = useNavigate();
+  const drill = useDrilldownNavigate();
   // Track last fetched filter key to avoid redundant API calls when filter refs change but values are the same
   const lastFetchKeyRef = useRef(null);
 
@@ -611,7 +611,7 @@ const MonthlyHistoricalOverallLots = () => {
     }
     // console.log("dateRange:", selectedData.dateRange);
     // console.log('Selected row for analysis:', selectedData);
-    navigate('/subsample-scatter', { state: { selectedData } });
+    drill('subsample-scatter', { state: { selectedData } });
   };
 
   const handleChangePage = (event, newPage) => {
@@ -679,8 +679,9 @@ const MonthlyHistoricalOverallLots = () => {
               <span>
                 <CsvExportButton
                   data={filledFilteredData}
-                  // Export omits the "Analysis" column (UI-only drill-in buttons).
-                  headers={tableHeaders.filter(h => h !== 'Analysis')}
+                  // Export omits the "Analysis" column (UI-only drill-in buttons) and the
+                  // MachineId / MaterialDesc / DimensionDesc / CAT identity columns (per request).
+                  headers={tableHeaders.filter(h => !['Analysis', 'MachineId', 'MaterialDesc', 'DimensionDesc', 'CAT'].includes(h))}
                   generalInfo={[
                     { label: 'Report', value: 'Historical Monthly Measurement Table' },
                     { label: 'Period', value: [filters.StartMonth, filters.EndMonth].filter(Boolean).join(' – ') },
@@ -1009,9 +1010,14 @@ const MonthlyHistoricalOverallLots = () => {
                                 backgroundColor: !isDash && Number(value) < 0.9949 ? '#F54D41' : undefined, // 不在范围内的cell背景变红
                               }}
                               onClick={isDash ? undefined : () => {
-                                navigate('/lots-sample-distribution-table', {
+                                const recent12 = getRecent12Months();
+                                drill('lots-sample-distribution-table', {
                                   state: {
                                     Period: col,
+                                    // Effective historical range (matches the visible month columns) →
+                                    // shown as the Period label on the drill-in.
+                                    periodStart: filters.StartMonth || recent12[0],
+                                    periodEnd: filters.EndMonth || recent12[recent12.length - 1],
                                     stats: value,
                                     row: row,
                                   },

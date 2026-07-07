@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import useDrilldownNavigate from '../../utils/useDrilldownNavigate';
 import { Typography, Grid, CircularProgress, Button, Tooltip, IconButton, TextField, Popover, Stack, InputAdornment, Divider } from '@mui/material';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import CloseIcon from '@mui/icons-material/Close';
@@ -36,7 +37,7 @@ const PIE_COLORS_MC4 = [
   '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28CFF', '#FF6699', '#FFB347', '#B6FFB3', '#FF6666', '#66B3FF',
   '#FFB6C1', '#B3B6FF', '#FFD700', '#B3FFD9', '#FF8C00', '#8CFF8C', '#8C8CFF', '#FF8CB3', '#B3FF8C', '#8CB3FF'
 ];
-const DEFAULT_DOT_COLOR = '#13133F';
+const DEFAULT_DOT_COLOR = '#4F9EF8'; // bright blue — visible on the dark chart background
 const UNMATCHED_DOT_COLOR = 'rgba(128,128,128,0.1)';
 
 const normalizeMonthValue = (value) => {
@@ -109,7 +110,7 @@ function ChartBlock({
   startMonth, // 新增：开始月份 (YYYY-MM 格式)
   endMonth, // 新增：结束月份 (YYYY-MM 格式)
 }) {
-  const navigate = useNavigate();
+  const drill = useDrilldownNavigate();
   const theme = useTheme();
   const axisTextColor = theme.palette.text.primary;
   const gridColor = theme.palette.divider;
@@ -671,9 +672,9 @@ function ChartBlock({
     'DimensionDesc',
     'CAT',
     'LotNo',
-    'SubSampleNo',
     'CarbonizingFurnace',
     'TemperingFurnace',
+    'SubSampleNo',
     'MeasValue',
     'MeasDate'
   ];
@@ -903,25 +904,36 @@ function ChartBlock({
                   </Stack>
                 </Popover>
                 <Box>
-                  {/* BRD SC6: "Retrieve raw data" removed; keep only "Download Raw Data". */}
+                  {/* BRD SC6: "Retrieve raw data" removed; keep only "Download Subsample Data". */}
                   <CsvExportButton
                     data={exportData}
                     headers={popupHeaders}
                     filename={buildExportFilename(generalInfo.MaterialDesc, title && title.includes('HRA') ? 'HRA' : title && title.includes('HRC') ? 'HRC' : 'Subsample')}
+                    sectionsAsColumns
                     generalInfo={[
-                      { label: 'Report', value: (title || 'Subsample') + ' Scattered Subsample Distribution' },
+                      { label: 'Report', value: 'Subsample Distribution — Raw Data' },
                       { label: 'Dept', value: generalInfo.Dept || '' },
                       { label: 'MachineId', value: generalInfo.MachineId || '' },
                       { label: 'MaterialDesc', value: generalInfo.MaterialDesc || '' },
                       { label: 'DimensionDesc', value: generalInfo.DimensionDesc || '' },
                       { label: 'CAT', value: generalInfo.CAT || '' },
+                    ]}
+                    statistics={[
+                      { label: 'No of Data', value: statisticsToShow?.Count ?? (Array.isArray(data) ? data.length : '') ?? '' },
+                      { label: 'Mean', value: statisticsToShow?.MeanValue ?? '' },
+                      { label: 'Std Dev', value: statisticsToShow?.StdValue != null ? Number(statisticsToShow.StdValue).toFixed(3) : '' },
+                      { label: 'LSL', value: LSL ?? '' },
+                      { label: 'USL', value: USL ?? '' },
+                      { label: 'Target', value: (LSL != null && USL != null) ? (LSL + USL) / 2 : '' },
+                      { label: 'CP', value: statisticsToShow?.CPValue ?? '' },
+                      { label: 'CPK', value: statisticsToShow?.CPKValue ?? '' },
                       { label: 'PP', value: statisticsToShow?.PPValue ?? '' },
                       { label: 'PPK', value: statisticsToShow?.PPKValue ?? '' },
                     ]}
                     size="small"
                     sx={{ height: 40, fontSize: 13, whiteSpace: 'nowrap' }}
                   >
-                    Download Raw Data
+                    Download Subsample Data
                   </CsvExportButton>
                 </Box>
               </Box>
@@ -991,7 +1003,7 @@ function ChartBlock({
                   orientation: 'h', // 横向
                   name: 'Histogram',
                   marker: {
-                    color: clickedFurnace ? clickedFurnace.color : 'rgba(0,0,255,0.4)',
+                    color: clickedFurnace ? clickedFurnace.color : 'rgba(79,158,248,0.6)',
                     line: { color: 'white', width: 2 },
                   },
                   opacity: 0.7,
@@ -1151,7 +1163,7 @@ function ChartBlock({
                       && dayjs(item.MeasDate).format('YYYY-MM-DD') === clickedPoint?.fullDate
                     ));
                     if (lotNo && moreDataPoint) {
-                      navigate('/lots-sample-distribution-table', {
+                      drill('lots-sample-distribution-table', {
                         state: {
                           row: moreDataPoint,
                           Period: moreDataPoint?.Period ? moreDataPoint.Period : null,

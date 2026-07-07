@@ -14,16 +14,16 @@ import { PieChart } from '@mui/x-charts/PieChart';
 import dayjs from 'dayjs';
 import * as d3 from 'd3-array';
 // 新增组件：无row.LotNo时自动查找所有individual lot
-import { useNavigate } from 'react-router-dom';
+import useDrilldownNavigate from '../../utils/useDrilldownNavigate';
+import InsightsIcon from '@mui/icons-material/Insights';
+import QueryStatsIcon from '@mui/icons-material/QueryStats';
+// Icons for the legacy row-style General Information (Historical Dimension / Key Focus origin).
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import GroupsIcon from '@mui/icons-material/Groups';
 import MemoryIcon from '@mui/icons-material/Memory';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
-import StorageIcon from '@mui/icons-material/Storage';
-import InsightsIcon from '@mui/icons-material/Insights';
-import QueryStatsIcon from '@mui/icons-material/QueryStats';
 
 // 最简 Minitab 正态曲线（100% 正确）
 const generateMinitabNormalCurve = (values, bins = 20) => {
@@ -248,7 +248,7 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
   const MAX_NC = 0.9949; // CP低于等于该值时标红
   const [loading, setLoading] = useState(false);
   const [lotData, setLotData] = useState([]);
-  const navigate = useNavigate();
+  const drill = useDrilldownNavigate();
   useEffect(() => {
     if (!row || !Period) return;
     const fetchLots = async () => {
@@ -466,7 +466,7 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
                   <TableRow key={idx}
                     style={{ cursor: 'pointer' }}
                     onClick={() => {
-                      navigate('/lots-sample-distribution-table', {
+                      drill('lots-sample-distribution-table', {
                         state: {
                           row: item,
                           displayPP: false,
@@ -909,6 +909,11 @@ const histogramBinConfig = React.useMemo(() => {
 const OverallLotsDistributionTable = () => {
   const location = useLocation();
   // const navigate = useNavigate();
+  // This page is shared by all four modules; hierarchical URLs record the origin
+  // in the first path segment. Historical Dimension / Key Focus keep the original
+  // row-style General Information; Individual / Dimension use the stat-tile grid.
+  const originModule = '/' + ((location?.pathname || '').split('/').filter(Boolean)[0] || '');
+  const legacyGeneralInfo = originModule === '/lots-historical-summary' || originModule === '/nc-lot-bar';
   const { state } = location || {};
   console.log('OverallLotsDistributionTable state', state);
   const { row } = state || {};
@@ -1092,6 +1097,20 @@ const OverallLotsDistributionTable = () => {
                 : Period)))
     : '';
 
+  // Historical Dimension passes the selected month range; show it as the Period label
+  // (e.g. "Jun 2026 – Aug 2026"). Falls back to the single formatted month otherwise.
+  const { periodStart, periodEnd } = state || {};
+  const fmtMonthShort = (m) => {
+    if (!m) return '';
+    const str = String(m).replace('-', '');
+    if (!/^\d{6}$/.test(str)) return String(m);
+    return `${new Date(`${str.slice(0, 4)}-${str.slice(4, 6)}-01`).toLocaleString('en-US', { month: 'short' })} ${str.slice(0, 4)}`;
+  };
+  const periodRangeLabel = (periodStart && periodEnd)
+    ? `${fmtMonthShort(periodStart)} – ${fmtMonthShort(periodEnd)}`
+    : '';
+  const periodDisplay = periodRangeLabel || formattedPeriod;
+
   // BRD H (Individual Lot Cpk): the lot-level general-info date field is the
   // measurement date — labelled "MeasDate" and shown as e.g. "Jan 14, 2026".
   const formattedMeasDate = row?.MeasDate
@@ -1171,30 +1190,48 @@ const OverallLotsDistributionTable = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
                     <CircularProgress />
                   </Box>
-                ) : (
-                <Box>
-                  {[
-                    row?.LotNo && { icon: <LocalOfferIcon fontSize="small" />, label: 'LotNo', value: row.LotNo },
+                ) : (() => {
+                  // One field list, two renderings. `full` marks long text fields that span
+                  // the whole width in the tile layout; the icon is used only by the legacy
+                  // row layout. Short fields first so tiles pair without gaps.
+                  const fields = [
+                    row?.LotNo && { icon: <LocalOfferIcon fontSize="small" />, label: 'LotNo', value: row.LotNo, full: true },
                     (row?.LotNo
                       ? (formattedMeasDate && { icon: <CalendarMonthIcon fontSize="small" />, label: 'MeasDate', value: formattedMeasDate })
-                      : (Period && { icon: <CalendarMonthIcon fontSize="small" />, label: 'Period', value: formattedPeriod })),
+                      : (Period && { icon: <CalendarMonthIcon fontSize="small" />, label: 'Period', value: periodDisplay })),
                     row?.Dept && { icon: <GroupsIcon fontSize="small" />, label: 'Dept', value: row.Dept },
                     row?.MachineId && { icon: <MemoryIcon fontSize="small" />, label: 'MachineId', value: row.MachineId },
-                    row?.MaterialDesc && { icon: <Inventory2Icon fontSize="small" />, label: 'MaterialDesc', value: row.MaterialDesc },
-                    row?.DimensionDesc && { icon: <StraightenIcon fontSize="small" />, label: 'DimensionDesc', value: row.DimensionDesc },
                     row?.CAT && { icon: <LocalOfferIcon fontSize="small" />, label: 'CAT', value: row.CAT },
-                    // No Of Data is omitted from the Individual Lot general info (redundant with the
-                    // Statistics panel); kept for the Dimension panel per BRD (added below CAT).
-                    !row?.LotNo && row?.NO_OF_DATA && { icon: <StorageIcon fontSize="small" />, label: 'No Of Data', value: (pieFilter.CarbonizingFurnace || pieFilter.TemperingFurnace) ? validFilteredTableData.length : row.NO_OF_DATA },
-                  ].filter(Boolean).map((f, i, arr) => (
-                    <Box key={f.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.9, borderBottom: i < arr.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
-                      <Box sx={{ color: 'text.secondary', display: 'flex' }}>{f.icon}</Box>
-                      <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>{f.label}:</Typography>
-                      <Typography sx={{ ml: 'auto', fontWeight: 'bold', fontSize: 14, textAlign: 'right' }}>{f.value}</Typography>
+                    // No Of Data is omitted — redundant with the Statistics panel's "No of Data" tile.
+                    row?.MaterialDesc && { icon: <Inventory2Icon fontSize="small" />, label: 'MaterialDesc', value: row.MaterialDesc, full: true },
+                    row?.DimensionDesc && { icon: <StraightenIcon fontSize="small" />, label: 'DimensionDesc', value: row.DimensionDesc, full: true },
+                  ].filter(Boolean);
+
+                  // Historical Dimension / Key Focus origin → legacy row layout.
+                  return legacyGeneralInfo ? (
+                    <Box>
+                      {fields.map((f, i, arr) => (
+                        <Box key={f.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.9, borderBottom: i < arr.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
+                          <Box sx={{ color: 'text.secondary', display: 'flex' }}>{f.icon}</Box>
+                          <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>{f.label}:</Typography>
+                          <Typography sx={{ ml: 'auto', fontWeight: 'bold', fontSize: 14, textAlign: 'right', wordBreak: 'break-word' }}>{f.value}</Typography>
+                        </Box>
+                      ))}
                     </Box>
-                  ))}
-                </Box>
-                )}
+                  ) : (
+                    // Individual / Dimension origin → stat-tile grid mirroring the Statistics panel.
+                    <Grid container spacing={1}>
+                      {fields.map((f) => (
+                        <Grid item xs={f.full ? 12 : 6} key={f.label}>
+                          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, py: 0.5, px: 1, textAlign: 'center', bgcolor: 'action.hover', height: '100%' }}>
+                            <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 600, lineHeight: 1.3 }}>{f.label}</Typography>
+                            <Typography sx={{ fontWeight: 'bold', fontSize: 16, lineHeight: 1.3, color: 'text.primary', wordBreak: 'break-word' }}>{f.value}</Typography>
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  );
+                })()}
               </Box>
             </Grid>
             <Grid item xs={12} sm={5}>

@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Typography, Grid, CircularProgress, Button, Stack, TextField, InputAdornment, Popover, Tooltip, IconButton } from '@mui/material';
+import { useLocation } from 'react-router-dom';
+import useDrilldownNavigate from '../../utils/useDrilldownNavigate';
+import { useTheme } from '@mui/material/styles';
+import { Typography, Grid, CircularProgress, Button, Stack, TextField, InputAdornment, Popover, Tooltip, IconButton, Divider } from '@mui/material';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import QueryStatsIcon from '@mui/icons-material/QueryStats';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
@@ -26,7 +28,7 @@ import { TimeSeriesContext } from '../../context/TimeSeriesContext';
 
 const PlotlyComponent = createPlotlyComponent(Plotly);
 // (SLIDER_WIDTH floor removed — layout is now fluid/responsive)
-const CHART_HEIGHT = 800;
+const CHART_HEIGHT = 650;
 const AXIS_TICK_FONT_SIZE = 16;
 const AXIS_TITLE_FONT_SIZE = 16;
 const X_AXIS_TICK_LABEL_FONT_SIZE = 20;
@@ -40,7 +42,7 @@ const PIE_COLORS_MC4 = [
   '#FFB6C1', '#B3B6FF', '#FFD700', '#B3FFD9', '#FF8C00', '#8CFF8C', '#8C8CFF', '#FF8CB3', '#B3FF8C', '#8CB3FF'
 ];
 
-const DEFAULT_DOT_COLOR = '#13133F';
+const DEFAULT_DOT_COLOR = '#4F9EF8'; // bright blue — visible on the dark chart background
 const UNMATCHED_DOT_COLOR = 'rgba(128,128,128,0.1)';
 
 const normalizeMonthValue = (value) => {
@@ -85,7 +87,15 @@ const buildContinuousDateRange = (startDateString, endDateString) => {
 
 const SubsampleScatterDistribution = () => {
   const location = useLocation();
-  const navigate = useNavigate();
+  const drill = useDrilldownNavigate();
+  const theme = useTheme();
+  const axisTextColor = theme.palette.text.primary;
+  const gridColor = theme.palette.divider;
+  // Shared page: Historical Dimension origin keeps the legacy row-style General
+  // Information; Dimension CPK origin uses the stat-tile grid. The first path
+  // segment encodes the origin (URLs are hierarchical).
+  const originModule = '/' + ((location?.pathname || '').split('/').filter(Boolean)[0] || '');
+  const legacyGeneralInfo = originModule === '/lots-historical-summary' || originModule === '/nc-lot-bar';
   const { state } = location || {};
   const { selectedData } = state || {};
   const { isTimeSeries } = useContext(TimeSeriesContext); // 从context读取时间序列标志
@@ -867,7 +877,9 @@ const SubsampleScatterDistribution = () => {
   return (
     <Box sx={{ padding: 4, mb: 4, width: '100%', maxWidth: '100vw', overflow: 'hidden' }}>
   <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en">
-    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 4, flexWrap: 'wrap' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 1, p: 1.5, mb: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', width: '100%', boxSizing: 'border-box' }}>
+    {/* Header row: title + date-range field + download (Key Focus card pattern) */}
+    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
       <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
         Subsample Scatter Distribution
       </Typography>
@@ -957,6 +969,27 @@ const SubsampleScatterDistribution = () => {
       >
         Download Subsample Data
       </CsvExportButton>
+      </Box>
+      {/* Quick date-range slider — same card as the header, matching the Key Focus reference. */}
+      {availableDatesRaw.length > 1 && (
+        <Box sx={{ width: '100%', px: 2, pt: 0.5, pb: 0.5 }}>
+          <Slider
+            value={safeSliderValue}
+            min={minSlider}
+            max={maxSlider}
+            step={1}
+            onChange={(_, newValue) => { if (Array.isArray(newValue)) { setDateRange([sliderDatesRaw[newValue[0]], sliderDatesRaw[newValue[1]]]); } }}
+            valueLabelDisplay="auto"
+            valueLabelFormat={idx => sliderDatesDisplay[idx] ?? ''}
+            sx={{ width: '100%', height: 6, '& .MuiSlider-rail': { height: 6 }, '& .MuiSlider-track': { height: 6 }, '& .MuiSlider-thumb': { width: 20, height: 20 }, '& .MuiSlider-valueLabel': { fontSize: 13, background: '#13133F', color: 'white', borderRadius: 2, px: 2, py: 1 } }}
+            disabled={sliderDatesRaw.length < 2}
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+            <Typography sx={{ fontSize: 13, color: 'text.primary', fontWeight: 600 }}>{sliderDatesDisplay[minSlider]}</Typography>
+            <Typography sx={{ fontSize: 13, color: 'text.primary', fontWeight: 600 }}>{sliderDatesDisplay[maxSlider]}</Typography>
+          </Box>
+        </Box>
+      )}
     </Box>
   </LocalizationProvider>
   {loading ? (
@@ -981,7 +1014,7 @@ const SubsampleScatterDistribution = () => {
   ) : (
     <Grid container spacing={2} sx={{ minWidth: 0, width: '100%', maxWidth: '100vw', overflow: 'hidden' }}>
       {/* 左侧图表区 */}
-      <Grid item xs={12} md={6} sx={{
+      <Grid item xs={12} md={8.5} sx={{
         minWidth: 0,
         maxWidth: '100%',
         overflow: 'hidden',
@@ -989,7 +1022,8 @@ const SubsampleScatterDistribution = () => {
         flexDirection: 'column',
         alignItems: 'stretch'
       }}>
-        <Box sx={{ width: '100%' }}>
+        <Box sx={{ width: '100%', border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: { xs: 1.5, md: 2.5 }, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, alignItems: 'stretch' }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
           <PlotlyComponent
             data={[
               {
@@ -1022,7 +1056,7 @@ const SubsampleScatterDistribution = () => {
                 orientation: 'h',
                 name: 'Histogram',
                 marker: {
-                  color: clickedFurnace ? clickedFurnace.color : 'rgba(0,0,255,0.4)',
+                  color: clickedFurnace ? clickedFurnace.color : 'rgba(79,158,248,0.6)',
                   line: { color: 'white', width: 2 },
                 },
                 opacity: 0.7,
@@ -1062,8 +1096,10 @@ const SubsampleScatterDistribution = () => {
               // },
             ]}
             layout={{
+              paper_bgcolor: 'transparent',
+              plot_bgcolor: 'transparent',
               grid: { rows: 1, columns: 2, pattern: 'independent' },
-              font: { size: 15, color: '#000000' },
+              font: { size: 15, color: axisTextColor },
               xaxis: { 
                 type: isTimeSeries ? 'date' : 'category',
                 domain: [0, 0.72],
@@ -1079,20 +1115,24 @@ const SubsampleScatterDistribution = () => {
                 tickangle: -45,
                 ticklabelposition: 'bottom',
                 showticklabels: true,
-                tickfont: { size: X_AXIS_TICK_LABEL_FONT_SIZE, color: '#000000' },
+                tickfont: { size: X_AXIS_TICK_LABEL_FONT_SIZE, color: axisTextColor },
+                gridcolor: gridColor,
+                zerolinecolor: gridColor,
               },
               yaxis: {
-                title: { text: 'MeasValue', font: { size: AXIS_TITLE_FONT_SIZE, color: '#000000' } },
+                title: { text: 'MeasValue', font: { size: AXIS_TITLE_FONT_SIZE, color: axisTextColor } },
                 domain: [0, 1],
                 range: [fixedYMinPad, fixedYMaxPad],
                 showticklabels: true,
                 fixedrange: true,
-                tickfont: { size: AXIS_TICK_FONT_SIZE, color: '#000000' },
+                tickfont: { size: AXIS_TICK_FONT_SIZE, color: axisTextColor },
+                gridcolor: gridColor,
+                zerolinecolor: gridColor,
               },
               xaxis2: {
-                title: { text: 'Count', font: { size: 20, color: '#000000' } },
+                title: { text: 'Count', font: { size: 20, color: axisTextColor } },
                 domain: [0.74, 1],
-                tickfont: { size: 20, color: '#000000' },
+                tickfont: { size: 20, color: axisTextColor },
               },
               width: undefined,
               height: CHART_HEIGHT,
@@ -1189,7 +1229,7 @@ const SubsampleScatterDistribution = () => {
                     setSelectedLotNo(lotNo);
                     // 导航到 Individual Lot Distribution 页面
                     // TODO:Fix Period Parsing to avoid invalid date error
-                    navigate('/lots-sample-distribution-table', {
+                    drill('lots-sample-distribution-table', {
                       state: {
                         // Dept: moreDataPoint.Dept,
                         // MachineId: moreDataPoint.MachineId,
@@ -1213,43 +1253,9 @@ const SubsampleScatterDistribution = () => {
             }}
           }
           />
-        </Box>
-        {/* Quick Date Range Selection slider — sits at the bottom of the graph column. */}
-        {availableDatesRaw.length > 1 && (
-          <Box sx={{ width: '100%', px: 2, pt: 1, pb: 1 }}>
-            <Slider
-              value={safeSliderValue}
-              min={minSlider}
-              max={maxSlider}
-              step={1}
-              onChange={(_, newValue) => {
-                if (Array.isArray(newValue)) {
-                  setDateRange([sliderDatesRaw[newValue[0]], sliderDatesRaw[newValue[1]]]);
-                }
-              }}
-              valueLabelDisplay="auto"
-              valueLabelFormat={idx => sliderDatesDisplay[idx]}
-              sx={{
-                width: '100%',
-                height: 10,
-                '& .MuiSlider-thumb': { width: 24, height: 24 },
-                '& .MuiSlider-valueLabel': { fontSize: 13, background: '#13133F', color: '#fff', borderRadius: 2, px: 2, py: 1 },
-              }}
-              disabled={sliderDatesRaw.length < 2}
-            />
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-              <Typography sx={{ fontSize: 13, color: 'text.primary', fontWeight: 600 }}>{sliderDatesDisplay[minSlider]}</Typography>
-              <Typography sx={{ fontSize: 13, color: 'text.primary', fontWeight: 600 }}>{sliderDatesDisplay[maxSlider]}</Typography>
-            </Box>
-            <Typography variant="h6" sx={{ fontSize: 18, textAlign: 'center', mt: 1, fontWeight: 700 }}>
-              Quick Date Range Selection
-            </Typography>
           </Box>
-        )}
-      </Grid>
-      {/* 中间：炉次数据 (Furnace Data) 独立一列 */}
-      <Grid item xs={12} md={2.5} sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-        <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: 2.5, mb: 3 }}>
+          <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' } }} />
+          <Box sx={{ flexShrink: 0, width: { xs: '100%', md: 320 }, display: 'flex', flexDirection: 'column' }}>
           <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} sx={{ mb: 2 }}>
             <LocalFireDepartmentIcon sx={{ color: 'warning.main' }} />
             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Furnace Data (Summary)</Typography>
@@ -1330,7 +1336,9 @@ const SubsampleScatterDistribution = () => {
               </Box>
             </Box>
           </Box>
+          </Box>
         </Box>
+        {/* Date-range slider moved to the top header card (Key Focus reference pattern). */}
       </Grid>
       {/* 右侧信息区 */}
       <Grid item xs={12} md={3.5} sx={{
@@ -1358,19 +1366,49 @@ const SubsampleScatterDistribution = () => {
             <DescriptionOutlinedIcon sx={{ color: 'primary.main' }} />
             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>General Information</Typography>
           </Stack>
-          {[
-            { label: 'Dept', value: selectedData?.Dept ?? '-' },
-            { label: 'MachineId', value: selectedData?.MachineId ?? '-' },
-            { label: 'MaterialDesc', value: selectedData?.MaterialDesc ?? '-' },
-            { label: 'DimensionDesc', value: selectedData?.DimensionDesc ?? '-' },
-            { label: 'CAT', value: selectedData?.CAT ?? '-' },
-            { label: 'Period', value: periodRangeLabel },
-          ].map((f, i, arr) => (
-            <Box key={f.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.85, borderBottom: i < arr.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
-              <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>{f.label}:</Typography>
-              <Typography sx={{ ml: 'auto', fontWeight: 'bold', fontSize: 14, textAlign: 'right', wordBreak: 'break-word' }}>{f.value}</Typography>
-            </Box>
-          ))}
+          {legacyGeneralInfo ? (
+            // Historical Dimension / Key Focus origin → row layout matching the
+            // NCSubsampleScatterBarChart "General Information" pattern: Grid rows, label
+            // left / value right-aligned bold, no dividers; long text fields get a
+            // narrower label column (xs=3/9 instead of 5/7).
+            <Grid container spacing={1}>
+              {[
+                { label: 'Dept', value: selectedData?.Dept ?? '-' },
+                { label: 'MachineId', value: selectedData?.MachineId ?? '-' },
+                { label: 'MaterialDesc', value: selectedData?.MaterialDesc ?? '-', long: true },
+                { label: 'DimensionDesc', value: selectedData?.DimensionDesc ?? '-', long: true },
+                { label: 'CAT', value: selectedData?.CAT ?? '-' },
+              ].map((f) => (
+                <Grid container item xs={12} alignItems="top" key={f.label}>
+                  <Grid item xs={f.long ? 3 : 5}>
+                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>{f.label}:</Typography>
+                  </Grid>
+                  <Grid item xs={f.long ? 9 : 7}>
+                    <Typography variant="body1" sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: 15, wordBreak: 'break-word' }}>{f.value}</Typography>
+                  </Grid>
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            // Dimension CPK origin → stat-tile grid mirroring the Statistics panel.
+            <Grid container spacing={1.5}>
+              {[
+                { label: 'Dept', value: selectedData?.Dept ?? '-' },
+                { label: 'MachineId', value: selectedData?.MachineId ?? '-' },
+                { label: 'CAT', value: selectedData?.CAT ?? '-' },
+                { label: 'Period', value: periodRangeLabel },
+                { label: 'MaterialDesc', value: selectedData?.MaterialDesc ?? '-', full: true },
+                { label: 'DimensionDesc', value: selectedData?.DimensionDesc ?? '-', full: true },
+              ].map((f) => (
+                <Grid item xs={f.full ? 12 : 6} key={f.label}>
+                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, py: 0.5, px: 1, textAlign: 'center', bgcolor: 'action.hover', height: '100%' }}>
+                    <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 600, lineHeight: 1.3 }}>{f.label}</Typography>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: 16, lineHeight: 1.3, color: 'text.primary', wordBreak: 'break-word' }}>{f.value}</Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+          )}
         </Box>
         <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: 2.5, mb: 3 }}>
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>

@@ -48,13 +48,26 @@ ContextProvider (global reducer store — src/context/ContextProvider.js)
                └─ NavBar (two-tier) + <Box footer> + <Routes>
 ```
 
-### Routing (`src/App.js`)
+### Routing (`src/App.js`) — hierarchical, resolved by last URL segment
 
-`/` **and** `/lot-cpk-bar` both render `LotCPKBarChart` (Individual-Lot scorecard). Other key routes:
-`/lots-cpk-ppk-bar` → `LotsCPPKBarChart` (Dimension scorecard), `/lots-historical-summary` →
-`HistoricalOverallLots`, `/nc-lot-bar` → `NCLotRankBar` (Key Focus), `/data-purge-config` →
-`DataPurgeConfig`. The `*-clicked-table` / `*-distribution-table` / `subsample-scatter` routes are
-**drill-in views** reached by clicking a bar/point on a scorecard.
+`App.js` registers a **single catch-all route** (`path="*"` → `<PageBySegment>`). The page is chosen by
+the **last** path segment via the `PAGE_BY_SEGMENT` map, keyed on the full URL so each distinct URL
+mounts a fresh instance. This lets one detail page live at **any depth**. Module roots: `/` **and**
+`/lot-cpk-bar` → `LotCPKBarChart` (Individual-Lot scorecard), `/lots-cpk-ppk-bar` → `LotsCPPKBarChart`
+(Dimension), `/lots-historical-summary` → `HistoricalOverallLots`, `/nc-lot-bar` → `NCLotRankBar`
+(Key Focus), `/data-purge-config` → `DataPurgeConfig`.
+
+**Drill-in views** (`*-clicked-table` / `lots-sample-distribution-table` / `subsample-scatter` /
+`nc-scatter-bar-chart`) are reached by clicking a bar/point/row and navigate with
+**`useDrilldownNavigate()`** (`src/utils/useDrilldownNavigate.js`), which **appends** the child segment
+to the current path instead of replacing it — producing self-describing URLs like
+`/lots-cpk-ppk-bar/overall-lots-clicked-table/subsample-scatter/lots-sample-distribution-table`. The
+same detail page is reachable from several modules; appending records the real path the user took (and
+lets the NavBar light up the correct module tab — see below). `BackButton` uses `navigate(-1)` to pop
+one level. **When adding a page**: add its component to `PAGE_BY_SEGMENT` and drill into it with
+`drill('segment', { state })` — never a hardcoded absolute `navigate('/segment')`, which flattens the
+URL and breaks tab highlighting. Deep-linking/refresh still needs router `state` (drill-in pages throw
+without it — see drill-in conventions).
 
 ### Global filter state is the cross-component contract
 
@@ -98,7 +111,11 @@ Always sanity-check a change in **both** `?mode=light` and `?mode=dark`.
 
 - **Two-tier `NavBar.js`**: Tier 1 = brand header (white Shimano logo chip via cropped
   `backgroundImage`, "PCM Dashboard" text, SPL select, SPC Portal link, light/dark toggle); Tier 2 =
-  module tab bar driven by `NAV_ITEMS` with an active-underline `tabSx(isActive)`.
+  module tab bar driven by `NAV_ITEMS` with an active-underline `tabSx(isActive)`. The active tab is
+  derived from the **first URL path segment** (`SECTION_ROOTS`) — so drill-in pages keep their origin
+  module highlighted (URLs are hierarchical, see Routing); `SECTION_BY_PATH` is a fallback for legacy
+  flat single-segment URLs. Tabs render as `Box component={Link}` (not `NavLink`, whose exact-match
+  `isActive` would miss drill-in depths). Overview is `locked` (never highlights).
 - **Filters are a horizontal top bar**, not a left sidebar: a bordered `background.paper` strip below
   the tab bar — `FILTERS` label → segmented `COUNT`/`PERCENT` pill → `Autocomplete` fields
   (`minWidth:160, flex:'1 1 160px'`, `flexWrap`) → compact **Clear** + a collapse chevron gated on a
@@ -118,6 +135,10 @@ Always sanity-check a change in **both** `?mode=light` and `?mode=dark`.
 - **Bar-chart `margin` must use concrete numbers, never `undefined`** — MUI x-charts treats
   `margin={{ bottom: undefined }}` as invalid and collapses the plot (bars vanish, x-axis jumps to
   top). Build a full object per case, e.g. `margin={showAllTicks ? {top:75,bottom:90} : {top:55}}`.
+- **`LotCPKBarChart` "Lot Daily CPK" line chart**: the daily gap-fill in `dailyDatasetsFilled` pushes
+  **`0` (not `null`)** for days with no data, and both line series use **`connectNulls: true`**, so the
+  line stays continuous and dips to the baseline on empty days (per requirement "NULL ≡ 0, connected").
+  Don't revert those to `null` / `connectNulls:false` — it re-breaks the line into disconnected segments.
 
 ### Drill-in view conventions (`*-clicked-table`, `*-distribution-table`)
 
@@ -129,6 +150,17 @@ drill-in pages reached from a scorecard. Keep them consistent:
   solid'`, `borderColor:'divider'`, `borderRadius:2`). The pie panel uses **donut** pies
   (`innerRadius:45`) centred with `justifyContent:'center'`; section headers are theme tokens
   (`primary.main` / `success.main` / `warning.main`), not hardcoded pastels.
+- **General Information panel is origin-gated** (`OverallLotsDistributionTable`,
+  `SubsampleScatterDistribution` — both shared by several modules). It renders as a **stat-tile grid**
+  (bordered `action.hover` cards, small `text.secondary` label over a bold value; short fields pair
+  `xs={6}`, long text fields LotNo / MaterialDesc / DimensionDesc full-width `xs={12}` with `wordBreak`,
+  ordered **last** so shorts pair without gaps) **only** when the drill-in was opened from **Individual
+  or Dimension CPK**. For **Historical Dimension / Key Focus** it falls back to the **legacy row layout**
+  (icon · `label:` · right-aligned value with dividers). The gate is the first URL segment —
+  `const legacyGeneralInfo = originModule === '/lots-historical-summary' || originModule === '/nc-lot-bar'`
+  (works because URLs are hierarchical). Both branches share one `fields` array (the `icon` is used only
+  by the legacy branch, `full` only by the tile branch). General Info has **no `No Of Data`** field in
+  either branch (redundant with Statistics). The **Statistics** panel is always a tile grid.
 - **They require router `state`** (the clicked row/period/metric) passed via `navigate(path,{state})`.
   Opening the URL directly throws (`Cannot destructure 'state'`/`reading 'Dept'`) — this is expected,
   not a bug. To screenshot one headlessly, temporarily add a **module-level** stable fallback object

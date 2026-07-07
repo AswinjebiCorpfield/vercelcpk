@@ -10,7 +10,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Switch from '@mui/material/Switch';
 import Stack from '@mui/material/Stack';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -29,6 +29,39 @@ import DataPurgeConfig from './components/DataPurgeConfig';
 import { TimeSeriesContext } from './context/TimeSeriesContext';
 
 const queryClient = new QueryClient();
+
+// ----------------------------------------------------------------------
+// Hierarchical routing
+// ----------------------------------------------------------------------
+// Every page is identified by the LAST segment of the URL path, so the same
+// page can live at any depth. Drill-in navigation appends child segments
+// (see utils/useDrilldownNavigate), producing self-describing URLs such as
+//   /lot-cpk-bar/individual-lot-clicked-table/lots-sample-distribution-table
+// without having to enumerate every parent/child combination as a route.
+const PAGE_BY_SEGMENT = {
+  '': LotCPKBarChart,                 // "/" landing (Individual Lot CPK)
+  'login': Login,
+  'lot-cpk-bar': LotCPKBarChart,
+  'individual-lot-clicked-table': IndividualLotClickedTable,
+  'lots-cpk-ppk-bar': LotsCPPKBarChart,
+  'overall-lots-clicked-table': OverallLotsClickedTable,
+  'lots-sample-distribution-table': OverallLotsDistributionTable,
+  'subsample-scatter': SubsampleScatterDistribution,
+  'lots-historical-summary': HistoricalOverallLots,
+  'nc-lot-bar': NCLotRankBar,
+  'nc-scatter-bar-chart': NCSubsampleScatterBarChart,
+  'data-purge-config': DataPurgeConfig,
+};
+
+const PageBySegment = () => {
+  const { pathname } = useLocation();
+  const segments = pathname.split('/').filter(Boolean);
+  const last = segments[segments.length - 1] || '';
+  const Page = PAGE_BY_SEGMENT[last] || LotCPKBarChart;
+  // Key on the full path so each distinct URL mounts a fresh instance
+  // (matches the previous one-Route-per-URL behaviour and re-runs data fetches).
+  return <Page key={pathname} />;
+};
 
 // (theme moved to ./theme/pcmTheme.js — createPcmTheme(mode))
 
@@ -114,18 +147,9 @@ const AppInner = () => {
                   }}
                 >
                   <Routes>
-                    <Route path="/" element={<LotCPKBarChart />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/nc-lot-bar" element={<NCLotRankBar />} />
-                    <Route path="/nc-scatter-bar-chart" element={<NCSubsampleScatterBarChart />} />
-                    <Route path="/lots-historical-summary" element={<HistoricalOverallLots />} />
-                    <Route path="/lots-cpk-ppk-bar" element={<LotsCPPKBarChart />} />
-                    <Route path="/lot-cpk-bar" element={<LotCPKBarChart />} />
-                    <Route path="/overall-lots-clicked-table" element={<OverallLotsClickedTable />} />
-                    <Route path="/lots-sample-distribution-table" element={<OverallLotsDistributionTable />} />
-                    <Route path="/subsample-scatter" element={<SubsampleScatterDistribution />} />
-                    <Route path="/individual-lot-clicked-table" element={<IndividualLotClickedTable />} />
-                    <Route path="/data-purge-config" element={<DataPurgeConfig />} />
+                    {/* Single resolver: the page is chosen by the last URL segment,
+                        so drill-in pages can live at any depth (hierarchical URLs). */}
+                    <Route path="*" element={<PageBySegment />} />
                   </Routes>
                 </Box>
               {/* Footer — in document flow (no longer fixed, so it never overlaps content) */}

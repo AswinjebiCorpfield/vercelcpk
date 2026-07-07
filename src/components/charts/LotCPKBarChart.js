@@ -18,7 +18,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import useDrilldownNavigate from '../../utils/useDrilldownNavigate';
 import { Autocomplete } from '@mui/material';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -35,7 +35,7 @@ const FILTER_KEYS = ['Dept', 'MachineId', 'MaterialDesc', 'DimensionDesc', 'CAT'
 
 const LotCPKBarChart = () => {
   const { state, dispatch } = useValue();
-  const navigate = useNavigate();
+  const drill = useDrilldownNavigate();
   const { isTimeSeries } = useContext(TimeSeriesContext); // 从context读取时间序列标志
 
   // 初始化filters：仅在完全没有历史筛选记录时使用 HT/HTF 默认值。
@@ -458,11 +458,11 @@ const LotCPKBarChart = () => {
           result.acPercent.push(data.acPct);
           result.ncPercent.push(data.ncPct);
         } else {
-          // 用 null 表示没有数据（不显示）
-          result.acData.push(null);
-          result.ncData.push(null);
-          result.acPercent.push(null);
-          result.ncPercent.push(null);
+          // 没有数据的日子按 0 处理（NULL 等同于 0），使折线保持连续
+          result.acData.push(0);
+          result.ncData.push(0);
+          result.acPercent.push('0.00');
+          result.ncPercent.push('0.00');
           filledCount++;
         }
         
@@ -547,7 +547,7 @@ const LotCPKBarChart = () => {
       periodType = 'unknown';
     }
     console.log('Bar clicked:', { date, periodType, filtersToSend, seriesId});
-    navigate('/individual-lot-clicked-table', { state: { date: date.toString(), periodType, filters: filtersToSend,seriesId } });
+    drill('individual-lot-clicked-table', { state: { date: date.toString(), periodType, filters: filtersToSend,seriesId } });
   };
 
   if (optionsLoading && Object.keys(allOptions).every(k => allOptions[k].length === 0)) {
@@ -929,7 +929,7 @@ const LotCPKBarChart = () => {
                         label: displayMode === 'Percentage' ? 'CPK ≥ 1 Individual Lot (%)' : 'Cpk ≥ 1 Individual Lot (Count)',
                         id: 'acId-day',
                         color: '#22C55E',
-                        connectNulls: false, // leave a gap at null days — don't bridge or draw as 0
+                        connectNulls: true, // NULL 等同于 0 — 保持折线连续
                         showMark: true,          // 显示每天的点
                         curve: 'linear',
                         valueFormatter: (v) =>
@@ -942,7 +942,7 @@ const LotCPKBarChart = () => {
                         label: displayMode === 'Percentage' ? 'CPK < 1 Individual Lot (%)' : 'CPK < 1 Individual Lot (Count)',
                         id: 'ncId-day',
                         color: 'red',
-                        connectNulls: false, // leave a gap at null days — don't bridge or draw as 0
+                        connectNulls: true, // NULL 等同于 0 — 保持折线连续
                         showMark: true,         // 显示每天的点
                         curve: 'linear',
                         valueFormatter: (v) =>

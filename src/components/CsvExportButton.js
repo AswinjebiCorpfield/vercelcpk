@@ -28,19 +28,26 @@ export const buildExportFilename = (materialDesc, period, fallback = 'PCM_Export
 // of the exported file. `generalInfo` is an array of { label, value } pairs.
 // `headerLabels` optionally maps a column key to a friendly display label for the
 // CSV header row only — data is still looked up by the original key.
-const CsvExportButton = ({ data, headers, filename = 'data.csv', generalInfo, statistics, headerLabels, sx, children, variant = 'outlined' }) => {
+const CsvExportButton = ({ data, headers, filename = 'data.csv', generalInfo, statistics, headerLabels, sectionsAsColumns = false, sx, children, variant = 'outlined' }) => {
   const handleExport = () => {
     if (!data || !data.length || !headers || !headers.length) return;
 
     const lines = [];
 
-    // Emit a labelled block (heading + one "label,value" row per field, each on its own line).
+    // Emit a labelled block. Default: one "label,value" row per field (vertical).
+    // With sectionsAsColumns: a header row of field labels + a single values row,
+    // so each field lands in its own separate column.
     const pushBlock = (heading, rows) => {
       if (!Array.isArray(rows) || !rows.length) return;
       lines.push(escapeCsvField(heading));
-      rows.forEach(({ label, value }) => {
-        lines.push(`${escapeCsvField(label)},${escapeCsvField(value)}`);
-      });
+      if (sectionsAsColumns) {
+        lines.push(rows.map(r => escapeCsvField(r.label)).join(','));
+        lines.push(rows.map(r => escapeCsvField(r.value)).join(','));
+      } else {
+        rows.forEach(({ label, value }) => {
+          lines.push(`${escapeCsvField(label)},${escapeCsvField(value)}`);
+        });
+      }
       lines.push(''); // blank separator row
     };
 

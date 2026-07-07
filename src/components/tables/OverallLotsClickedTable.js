@@ -6,11 +6,12 @@ import axios from 'axios';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import HistoryIcon from '@mui/icons-material/History';
 import Button from '@mui/material/Button';
-import { useNavigate } from 'react-router-dom';
+import useDrilldownNavigate from '../../utils/useDrilldownNavigate';
 import TableSortLabel from '@mui/material/TableSortLabel';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
 import Popover from '@mui/material/Popover';
 import InputAdornment from '@mui/material/InputAdornment';
 import CsvExportButton from '../CsvExportButton';
@@ -67,7 +68,7 @@ const OverallLotsClickedTable = () => {
     const [filterAnchorEl, setFilterAnchorEl] = useState(null);
     const [filterColumn, setFilterColumn] = useState(null);
     const [leftOpen, setLeftOpen] = useState(true);
-    const navigate = useNavigate();
+    const drill = useDrilldownNavigate();
 
     console.log('Component mounted with state:', state);
 
@@ -356,6 +357,16 @@ const OverallLotsClickedTable = () => {
         setFilterValues(prev => ({ ...prev, [filterKey]: newSelection }));
         setPage(0);
     };
+
+    // A column is "actively filtered" when it has a non-empty text value, a min/max range, or a selected furnace.
+    const isColumnFiltered = (colId) => {
+        const v = filterValues[colId];
+        if (v == null || v === '') return false;
+        if (Array.isArray(v)) return v.length > 0;
+        if (typeof v === 'object') return (v.min ?? '') !== '' || (v.max ?? '') !== '';
+        return true;
+    };
+    const hasActiveFilters = Object.keys(filterValues).some(k => isColumnFiltered(k));
 
     return (
         <Box sx={{ mt: { xs: 1, sm: 1.5, md: 2 }, mb: { xs: 2, sm: 3, md: 5 }, px: { xs: 1, sm: 1.5, md: 2 }, display: 'flex', gap: { xs: 1, md: 3 }, flexWrap: { xs: 'wrap', md: 'nowrap' }, boxSizing: 'border-box', width: '100%', maxWidth: '100%' }}>
@@ -692,6 +703,17 @@ const OverallLotsClickedTable = () => {
                             Period: {formatMonthYear(date) || 'No date provided'}
                         </Typography>
                     </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                    {hasActiveFilters && (
+                        <IconButton
+                            size="small"
+                            title="Clear all column filters"
+                            onClick={() => { setFilterValues({}); setPage(0); }}
+                            sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+                        >
+                            <FilterAltOffIcon fontSize="small" />
+                        </IconButton>
+                    )}
                     <CsvExportButton
                         data={finalFilteredData.map(r => ({
                             ...r,
@@ -716,6 +738,7 @@ const OverallLotsClickedTable = () => {
                     >
                         Download Dimension Data
                     </CsvExportButton>
+                    </Box>
                 </Box>
             {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
@@ -771,7 +794,7 @@ const OverallLotsClickedTable = () => {
                                                         onClick={e => handleFilterIconClick(e, col.id)}
                                                         sx={{ ml: 0.5 }}
                                                     >
-                                                        <FilterListIcon fontSize="small" />
+                                                        <FilterListIcon fontSize="small" sx={{ color: isColumnFiltered(col.id) ? '#FFC107' : 'inherit' }} />
                                                     </IconButton>
                                                 )}
                                             </Box>
@@ -786,7 +809,7 @@ const OverallLotsClickedTable = () => {
                                     <TableRow key={index}
                                     style={{ cursor: 'pointer' }}
                                     onClick={() => {
-                                                    navigate('/lots-sample-distribution-table', {
+                                                    drill('lots-sample-distribution-table', {
                                                         state: {
                                                             Period: date,
                                                             row },
@@ -866,7 +889,7 @@ const OverallLotsClickedTable = () => {
                                                     sx={{ color: 'darkblue', fontSize: { xs: '0.6rem', sm: '0.75rem' }, padding: { xs: '4px', sm: '6px' }, textTransform: 'none' }}
                                                     onClick={(e) => {
                                                         e.stopPropagation(); // don't also fire the row's onClick (double history entry)
-                                                        navigate('/lots-sample-distribution-table', {
+                                                        drill('lots-sample-distribution-table', {
                                                             state: {
                                                                 Period: date,
                                                                 row },
@@ -892,7 +915,7 @@ const OverallLotsClickedTable = () => {
                                                             const fmt = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
                                                             dateRange = [fmt(start), fmt(end)];
                                                         }
-                                                        navigate('/subsample-scatter', { state: { selectedData: { ...row, dateRange } } });
+                                                        drill('subsample-scatter', { state: { selectedData: { ...row, dateRange } } });
                                                     }}
                                                 >
                                                     Historical
@@ -901,6 +924,13 @@ const OverallLotsClickedTable = () => {
                                         </TableCell>
                                     </TableRow>
                                 ))}
+                                {finalFilteredData.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={columns.length} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                                            No matching results.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
                     </TableContainer>
