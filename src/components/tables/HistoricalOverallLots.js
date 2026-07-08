@@ -687,7 +687,10 @@ const MonthlyHistoricalOverallLots = () => {
                     { label: 'Period', value: [filters.StartMonth, filters.EndMonth].filter(Boolean).join(' – ') },
                     { label: 'Dept', value: filters.Dept || '' },
                   ]}
-                  filename={buildExportFilename(filters.MaterialDesc, [filters.StartMonth, filters.EndMonth].filter(Boolean).join('-'), 'Historical_Data')}
+                  filename={(() => {
+                    const range = [filters.StartMonth, filters.EndMonth].filter(Boolean).map(formatMonthCol).join(' – ');
+                    return `Historical Dimension Measurement Table${range ? '_' + range : ''}.csv`;
+                  })()}
                   sx={{ px: 1.5, height: 36, textTransform: 'none', whiteSpace: 'nowrap', color: 'text.secondary', borderColor: 'divider' }}
                 >
                   <DownloadIcon fontSize="small" style={{ marginRight: 6 }} />

@@ -10,6 +10,7 @@ import axios from 'axios';
 import Plot from 'react-plotly.js';
 import { Height } from '@mui/icons-material';
 import CsvExportButton, { buildExportFilename } from '../CsvExportButton';
+import { compareLotNoLast7 } from '../../utils/lotNo';
 import { PieChart } from '@mui/x-charts/PieChart';
 import dayjs from 'dayjs';
 import * as d3 from 'd3-array';
@@ -158,7 +159,7 @@ const HistogramComponent = ({ tableData, LSL, USL }) => {
         });
         annotations.push({
         x: parsedLSL,
-            y: 1.05,
+            y: 1.05, yanchor: 'bottom',
             xref: 'x',
             yref: 'paper',
             text: 'LSL',
@@ -179,7 +180,7 @@ const HistogramComponent = ({ tableData, LSL, USL }) => {
         });
         annotations.push({
         x: parsedUSL,
-            y: 1.05,
+            y: 1.05, yanchor: 'bottom',
             xref: 'x',
             yref: 'paper',
             text: 'USL',
@@ -201,7 +202,7 @@ const HistogramComponent = ({ tableData, LSL, USL }) => {
         });
         annotations.push({
             x: target,
-            y: 1.05,
+            y: 1.05, yanchor: 'bottom',
             xref: 'x',
             yref: 'paper',
             text: 'Target',
@@ -227,7 +228,7 @@ const HistogramComponent = ({ tableData, LSL, USL }) => {
         },
         width: plotWidth,
         height: plotHeight,
-        margin: { t: 60, l: 70, r: 30, b: 100 },
+        margin: { t: 80, l: 70, r: 30, b: 100 },
         shapes,
         annotations,
     };
@@ -244,7 +245,7 @@ const HistogramComponent = ({ tableData, LSL, USL }) => {
   );
 };
 
-const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, statistics }) => {
+const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, statistics, lotDataFilename, subsampleFilename }) => {
   const MAX_NC = 0.9949; // CP低于等于该值时标红
   const [loading, setLoading] = useState(false);
   const [lotData, setLotData] = useState([]);
@@ -326,6 +327,9 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
           if (isNaN(bv)) bv = -Infinity;
           return order === 'asc' ? av - bv : bv - av;
         }
+        if (orderBy === 'LotNo') {
+          return order === 'asc' ? compareLotNoLast7(a.LotNo, b.LotNo) : compareLotNoLast7(b.LotNo, a.LotNo);
+        }
         av = String(av ?? ''); bv = String(bv ?? '');
         return order === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       });
@@ -369,7 +373,7 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
               ]}
               generalInfo={[
                 { label: 'Report', value: 'Subsample Distribution — Lot Data' },
-                { label: 'MeasDate', value: Period },
+                { label: 'Period', value: Period },
                 { label: 'Dept', value: row?.Dept || '' },
                 { label: 'MachineId', value: row?.MachineId || '' },
                 { label: 'MaterialDesc', value: row?.MaterialDesc || '' },
@@ -377,7 +381,7 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
                 { label: 'CAT', value: row?.CAT || '' },
               ]}
               statistics={statistics}
-              filename={buildExportFilename(row?.MaterialDesc, Period, 'Lot_Data')}
+              filename={lotDataFilename ?? buildExportFilename(row?.MaterialDesc, Period, 'Lot_Data')}
             >
               Download Lot Data
             </CsvExportButton>
@@ -404,8 +408,8 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
                 'MeasDate'
               ]}
               generalInfo={[
-                { label: 'Report', value: 'Histogram Distribution — Subsample Data' },
-                { label: 'MeasDate', value: Period },
+                { label: 'Report', value: 'Subsample Distribution — Raw Data' },
+                { label: 'Period', value: Period },
                 { label: 'Dept', value: row?.Dept || '' },
                 { label: 'MachineId', value: row?.MachineId || '' },
                 { label: 'MaterialDesc', value: row?.MaterialDesc || '' },
@@ -413,7 +417,7 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
                 { label: 'CAT', value: row?.CAT || '' },
               ]}
               statistics={statistics}
-              filename={buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data')}
+              filename={subsampleFilename ?? buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data')}
             >
               Download Subsample Data
             </CsvExportButton>
@@ -573,7 +577,7 @@ const HistogramAndPie = ({
         });
         annotations.push({
         x: parsedLSL,
-            y: 1.05,
+            y: 1.05, yanchor: 'bottom',
             xref: 'x',
             yref: 'paper',
             text: 'LSL',
@@ -594,7 +598,7 @@ const HistogramAndPie = ({
         });
         annotations.push({
         x: parsedUSL,
-            y: 1.05,
+            y: 1.05, yanchor: 'bottom',
             xref: 'x',
             yref: 'paper',
             text: 'USL',
@@ -617,7 +621,7 @@ const HistogramAndPie = ({
         });
         annotations.push({
             x: target,
-            y: 1.05,
+            y: 1.05, yanchor: 'bottom',
             xref: 'x',
             yref: 'paper',
             text: 'Target',
@@ -673,7 +677,7 @@ const histogramBinConfig = React.useMemo(() => {
         },
         width: plotWidth,
         height: plotHeight,
-        margin: { t: 60, l: 70, r: 30, b: 100 },
+        margin: { t: 80, l: 70, r: 30, b: 100 },
         shapes,
         annotations,
     };
@@ -713,7 +717,11 @@ const histogramBinConfig = React.useMemo(() => {
             {displayPP && showPies && (
             <Box sx={{ mt: showHistogram ? 3 : 0, display: 'flex', flexDirection: 'row', gap: 3, flexWrap: 'wrap' }}>
                 {/* CarbonizingFurnace Pie */}
-                <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: 'text.primary', textAlign: 'center' }}>
+                        Carburizing Furnace (TVC)
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
                     <Box sx={{ position: 'relative', width: 160, height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <PieChart
                             series={[{
@@ -805,9 +813,14 @@ const histogramBinConfig = React.useMemo(() => {
                             ))
                         )}
                     </Box>
+                    </Box>
                 </Box>
                 {/* TemperingFurnace Pie */}
-                <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: 'text.primary', textAlign: 'center' }}>
+                        Tempering Furnace (TAT)
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
                     <Box sx={{ position: 'relative', width: 160, height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <PieChart
                             series={[{
@@ -898,6 +911,7 @@ const histogramBinConfig = React.useMemo(() => {
                                 </Box>
                             ))
                         )}
+                    </Box>
                     </Box>
                 </Box>
             </Box>)}
@@ -998,11 +1012,14 @@ const OverallLotsDistributionTable = () => {
           if (isNaN(av)) av = -Infinity; if (isNaN(bv)) bv = -Infinity;
           return subOrder === 'asc' ? av - bv : bv - av;
         }
+        if (subOrderBy === 'LotNo') {
+          return subOrder === 'asc' ? compareLotNoLast7(a.LotNo, b.LotNo) : compareLotNoLast7(b.LotNo, a.LotNo);
+        }
         av = String(av ?? ''); bv = String(bv ?? '');
         return subOrder === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       });
     } else {
-      data.sort((a, b) => a.LotNo !== b.LotNo ? a.LotNo.localeCompare(b.LotNo) : (a.SubSampleNo || 0) - (b.SubSampleNo || 0));
+      data.sort((a, b) => { const c = compareLotNoLast7(a.LotNo, b.LotNo); return c !== 0 ? c : (a.SubSampleNo || 0) - (b.SubSampleNo || 0); });
     }
     return data;
   }, [filteredTableData, subSearch, subOrderBy, subOrder]);
@@ -1116,6 +1133,27 @@ const OverallLotsDistributionTable = () => {
   const formattedMeasDate = row?.MeasDate
     ? new Date(row.MeasDate).toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit' })
     : '';
+
+  // Download filename conventions (BRD):
+  //   Individual Lot origin: "<Material>_Individual Lot Subsample Data_<MeasDate>"
+  //   Dimension origin:      "<Material>_Dimension Lot Data_<Period>" and
+  //                          "<Material>_Dimension Subsample Data_<Period>"
+  // Material descriptions can contain filename-invalid chars (e.g. "BC68K/68"),
+  // so strip only those and keep spaces to match the requested format.
+  const cleanMaterialForFile = String(row?.MaterialDesc || 'Material').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+  const periodLabelForFile = periodDisplay || String(Period || '');
+  const measDateForFile = row?.MeasDate ? dayjs(row.MeasDate).format('D MMM YYYY') : periodLabelForFile;
+  // Dimension CPK PPK and Historical Dimension drill-ins both use the "Dimension …" naming.
+  const isDimensionOrigin = originModule === '/lots-cpk-ppk-bar' || originModule === '/lots-historical-summary';
+  const dimensionLotDataFilename = isDimensionOrigin
+    ? `${cleanMaterialForFile}_Dimension Lot Data_${periodLabelForFile}.csv`
+    : buildExportFilename(row?.MaterialDesc, Period, 'Lot_Data');
+  const dimensionSubsampleFilename = isDimensionOrigin
+    ? `${cleanMaterialForFile}_Dimension Subsample Data_${periodLabelForFile}.csv`
+    : buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data');
+  const individualLotSubsampleFilename = originModule === '/lot-cpk-bar'
+    ? `${cleanMaterialForFile}_Individual Lot Subsample Data_${measDateForFile}.csv`
+    : dimensionSubsampleFilename;
 
   // BRD (Individual Lot Cpk & Dimension Cpk Ppk): the exported file carries a
   // "Statistics" block (one field per row) alongside "General Information".
@@ -1242,35 +1280,49 @@ const OverallLotsDistributionTable = () => {
                 </Box>
                 {loading || filteredTableData.length === 0 ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 120 }}><CircularProgress /></Box>
-                ) : (
-                  <Grid container spacing={1}>
-                    {[
-                      { label: 'Mean', value: metrics?.MeanValue ?? '-' },
-                      { label: 'Std Dev', value: metrics?.StdValue ?? '-' },
-                      { label: 'No of Data', value: (pieFilter.CarbonizingFurnace || pieFilter.TemperingFurnace) ? validFilteredTableData.length : (row?.NO_OF_DATA ?? '-') },
-                      { label: 'LSL', value: statsLSLDisplay },
-                      { label: 'USL', value: statsUSLDisplay },
-                      { label: 'Target', value: (isVisibleLSL(statsLSLParsed) && isVisibleUSL(statsUSLParsed)) ? ((statsLSLParsed + statsUSLParsed) / 2) : '-', color: 'success.main' },
-                      { label: 'CPK', value: (metrics?.CPKValue != null && !isNaN(metrics?.CPKValue)) ? Number(metrics.CPKValue).toFixed(3) : (metrics?.CPKValue ?? '-'), color: metrics?.CPKValue != null && Number(metrics?.CPKValue) <= MAX_NC ? '#F54D41' : undefined },
-                      ...(displayPP ? [{ label: 'PPK', value: (metrics?.PPKValue != null && !isNaN(metrics?.PPKValue)) ? Number(metrics.PPKValue).toFixed(3) : (metrics?.PPKValue ?? '-'), color: metrics?.PPKValue != null && Number(metrics?.PPKValue) <= MAX_NC ? '#F54D41' : undefined }] : []),
-                      { label: 'CP', value: (metrics?.CPValue != null && !isNaN(metrics?.CPValue)) ? Number(metrics.CPValue).toFixed(3) : (metrics?.CPValue ?? '-'), color: metrics?.CPValue != null && Number(metrics?.CPValue) <= MAX_NC ? '#F54D41' : undefined },
-                      ...(displayPP ? [{ label: 'PP', value: (metrics?.PPValue != null && !isNaN(metrics?.PPValue)) ? Number(metrics.PPValue).toFixed(3) : (metrics?.PPValue ?? '-'), color: metrics?.PPValue != null && Number(metrics?.PPValue) <= MAX_NC ? '#F54D41' : undefined }] : []),
-                    ].map((s) => (
-                      <Grid item xs={6} key={s.label}>
-                        <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, py: 0.5, px: 1, textAlign: 'center', bgcolor: 'action.hover', height: '100%' }}>
-                          <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 600, lineHeight: 1.3 }}>{s.label}</Typography>
-                          <Typography sx={{ fontWeight: 'bold', fontSize: 16, lineHeight: 1.3, color: s.color || 'text.primary' }}>{s.value}</Typography>
+                ) : (() => {
+                  const statsFields = [
+                    { label: 'Mean', value: metrics?.MeanValue ?? '-' },
+                    { label: 'Std Dev', value: metrics?.StdValue ?? '-' },
+                    { label: 'No of Data', value: (pieFilter.CarbonizingFurnace || pieFilter.TemperingFurnace) ? validFilteredTableData.length : (row?.NO_OF_DATA ?? '-') },
+                    { label: 'LSL', value: statsLSLDisplay },
+                    { label: 'USL', value: statsUSLDisplay },
+                    { label: 'Target', value: (isVisibleLSL(statsLSLParsed) && isVisibleUSL(statsUSLParsed)) ? ((statsLSLParsed + statsUSLParsed) / 2) : '-', color: 'success.main' },
+                    { label: 'CPK', value: (metrics?.CPKValue != null && !isNaN(metrics?.CPKValue)) ? Number(metrics.CPKValue).toFixed(3) : (metrics?.CPKValue ?? '-'), color: metrics?.CPKValue != null && Number(metrics?.CPKValue) <= MAX_NC ? '#F54D41' : undefined },
+                    ...(displayPP ? [{ label: 'PPK', value: (metrics?.PPKValue != null && !isNaN(metrics?.PPKValue)) ? Number(metrics.PPKValue).toFixed(3) : (metrics?.PPKValue ?? '-'), color: metrics?.PPKValue != null && Number(metrics?.PPKValue) <= MAX_NC ? '#F54D41' : undefined }] : []),
+                    { label: 'CP', value: (metrics?.CPValue != null && !isNaN(metrics?.CPValue)) ? Number(metrics.CPValue).toFixed(3) : (metrics?.CPValue ?? '-'), color: metrics?.CPValue != null && Number(metrics?.CPValue) <= MAX_NC ? '#F54D41' : undefined },
+                    ...(displayPP ? [{ label: 'PP', value: (metrics?.PPValue != null && !isNaN(metrics?.PPValue)) ? Number(metrics.PPValue).toFixed(3) : (metrics?.PPValue ?? '-'), color: metrics?.PPValue != null && Number(metrics?.PPValue) <= MAX_NC ? '#F54D41' : undefined }] : []),
+                  ];
+                  return legacyGeneralInfo ? (
+                    // Historical Dimension / Key Focus: Statistics follows the General
+                    // Information row layout (label left, value right-aligned bold).
+                    <Box>
+                      {statsFields.map((s, i, arr) => (
+                        <Box key={s.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.9, borderBottom: i < arr.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
+                          <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>{s.label}:</Typography>
+                          <Typography sx={{ ml: 'auto', fontWeight: 'bold', fontSize: 14, textAlign: 'right', wordBreak: 'break-word', color: s.color || 'text.primary' }}>{s.value}</Typography>
                         </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
-                )}
+                      ))}
+                    </Box>
+                  ) : (
+                    <Grid container spacing={1}>
+                      {statsFields.map((s) => (
+                        <Grid item xs={6} key={s.label}>
+                          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, py: 0.5, px: 1, textAlign: 'center', bgcolor: 'action.hover', height: '100%' }}>
+                            <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 600, lineHeight: 1.3 }}>{s.label}</Typography>
+                            <Typography sx={{ fontWeight: 'bold', fontSize: 16, lineHeight: 1.3, color: s.color || 'text.primary' }}>{s.value}</Typography>
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  );
+                })()}
               </Box>
             </Grid>
           </Grid>
           {displayPP && filteredTableData.length > 0 && (
             <Box sx={{ mt: 3, width: '100%', boxSizing: 'border-box', p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-              <Typography variant="h6" gutterBottom>Furnace Distribution</Typography>
+              <Typography variant="h6" gutterBottom sx={{ textAlign: 'center' }}>Furnace Data (Summary)</Typography>
               <HistogramAndPie
                 tableData={filteredTableData}
                 LSL={filteredTableData[0].LSL}
@@ -1317,7 +1369,7 @@ const OverallLotsDistributionTable = () => {
               ]}
               generalInfo={[
                 { label: 'Report', value: 'Subsample Distribution — Raw Data' },
-                { label: 'MeasDate', value: Period },
+                { label: 'Period', value: Period },
                 { label: 'Dept', value: row?.Dept || '' },
                 { label: 'MachineId', value: row?.MachineId || '' },
                 { label: 'MaterialDesc', value: row?.MaterialDesc || '' },
@@ -1325,7 +1377,7 @@ const OverallLotsDistributionTable = () => {
                 { label: 'CAT', value: row?.CAT || '' },
               ]}
               statistics={statisticsForExport}
-              filename={buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data')}
+              filename={individualLotSubsampleFilename}
               sx={{ flexShrink: 0, px: 1.5, height: 34, whiteSpace: 'nowrap', textTransform: 'none' }}
               title="Download Subsample Data"
             >
@@ -1419,7 +1471,7 @@ const OverallLotsDistributionTable = () => {
       {!row?.LotNo && (
         <Grid item xs={12}>
           <Box sx={{ width: '100%', boxSizing: 'border-box', p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-            <IndividualLotTableGeneralInfo row={row} Period={Period} pieFilter={pieFilter} subsampleData={filteredTableData} statistics={statisticsForExport} />
+            <IndividualLotTableGeneralInfo row={row} Period={Period} pieFilter={pieFilter} subsampleData={filteredTableData} statistics={statisticsForExport} lotDataFilename={dimensionLotDataFilename} subsampleFilename={dimensionSubsampleFilename} />
           </Box>
         </Grid>
       )}

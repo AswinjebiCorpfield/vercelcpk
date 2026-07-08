@@ -603,33 +603,26 @@ useEffect(() => {
             <Grid container direction="row" spacing={2}>
               <Grid item xs={12} md={2} sx={{ minWidth: 200, maxWidth: { md: 200 } }}>
                 <Box sx={{ width: '100%', px: 1.5, py: 1 }}>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                    {dataset.title}
-                  </Typography>
-                  <Typography sx={{ fontSize: 13, color: 'text.secondary', fontWeight: 600, mb: 1.5 }}>
-                    {dataset.subtitle}
+                  <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1.5 }}>
+                    Dimension {dataset.subtitle.includes('PPK') ? 'Ppk' : 'Cpk'} Scorecard
                   </Typography>
                   <Stack spacing={1}>
                     <KpiTile label={`${dataset.subtitle.slice(-3)} ≥ 1 Percentage`} color={KPI.pct}
                       value={`${dataset.averagePercent.toFixed(1)}%`} />
-                    {displayMode === 'Count' && (
-                      <>
-                        <KpiTile label={`${dataset.subtitle.slice(-3)} ≥ 1 Dimension Count`} color={KPI.ac}
-                          value={new Intl.NumberFormat().format(dataset.totalAC)} />
-                        <KpiTile label={`${dataset.subtitle.slice(-3)} < 1 Dimension Count`} color={KPI.nc}
-                          value={new Intl.NumberFormat().format(dataset.totalNC)} />
-                      </>
-                    )}
+                    <KpiTile label={`${dataset.subtitle.slice(-3)} ≥ 1 Dimension Count`} color={KPI.ac}
+                      value={new Intl.NumberFormat().format(dataset.totalAC)} />
+                    <KpiTile label={`${dataset.subtitle.slice(-3)} < 1 Dimension Count`} color={KPI.nc}
+                      value={new Intl.NumberFormat().format(dataset.totalNC)} />
                   </Stack>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: 'primary.main', fontStyle: 'italic', mt: 2, letterSpacing: 0.3 }}
+                  >
+                    ⓘ Important Note: Click a column bar to view details.
+                  </Typography>
                 </Box>
               </Grid>
               <Grid item xs={12} md sx={{ minWidth: 400, overflow: 'auto', flexGrow: 1, flexBasis: 0, maxWidth: 'none' }}>
-                <Typography
-                  variant="body2"
-                  sx={{ color: 'primary.main', fontStyle: 'italic', mb: 1, ml: 1, letterSpacing: 0.3 }}
-                >
-                  ⓘ Important Note: Click a column bar to view details.
-                </Typography>
                 {loading ? (
                   // Loading state centered in the chart area (matches the Individual Lot page).
                   <Box sx={{ marginBottom: 2, minHeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
@@ -645,6 +638,9 @@ useEffect(() => {
                 ) : (
                   <Box sx={{ marginBottom: 2, minHeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', overflowX: 'auto', width: '100%' }}>
                     <div className="custom-x-padding-bottom" style={{ width: '100%', minWidth: 600 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center', mb: 1 }}>
+                      Dimension Monthly {dataset.subtitle.includes('PPK') ? 'Ppk' : 'Cpk'} Performance ({displayMode === 'Count' ? 'Count' : 'Percentage'})
+                    </Typography>
                     {(() => {
                       const metric = dataset.subtitle.includes('PPK') ? 'PPK' : 'CPK';
                       const suffix = displayMode === 'Percent' ? '(%)' : '(Count)';
@@ -708,14 +704,13 @@ useEffect(() => {
                           
                           onItemClick={(event, data) => { setClickDot(data); setResultType(data.seriesId.includes('pvId') ? 'ac' : 'nc'); handleBarClick(data);}}
                         >
-                          <StackTotalLabels
-                            categories={xLabelsFmt}
-                            totals={dataset.countTotals || []}
-                            positions={displayMode === 'Percent'
-                              ? dataset.acData.map((ac, i) => (Number(ac) || 0) + (Number(dataset.ncData[i]) || 0))
-                              : undefined}
-                            angle={showAllTicks ? -90 : 0}
-                          />
+                          {displayMode === 'Count' && (
+                            <StackTotalLabels
+                              categories={xLabelsFmt}
+                              totals={dataset.countTotals || []}
+                              angle={showAllTicks ? -90 : 0}
+                            />
+                          )}
                         </BarChart>
                       );
                     })()}

@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   Box, Card, CardContent, Typography, Grid, TextField, MenuItem, Switch,
   FormControlLabel, Button, Divider, Chip, Table, TableBody, TableCell,
@@ -20,8 +21,15 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 // BRD General item 5 — "Configuration page for all data purging".
 // The BRD leaves the detailed spec open, so this is a sensible, professional
 // admin surface: retention policy per data source, a scope filter, a guarded
-// purge action with confirmation, and an audit trail. The actual purge is
-// wired to the backend in the API phase; here the action is simulated.
+// purge action with confirmation, and an audit trail.
+//
+// Backend integration (Endpoints/DataPurgeEndpoints.cs):
+//   POST /data-purge-preview  -> real eligible-row counts (drives the estimates)
+//   POST /data-purge-execute  -> dry-run count OR real DELETE (drives the button)
+//   GET  /data-purge-audit    -> recent purge history (seeds "Last Action")
+// When the API is unreachable OR returns a demo-mode empty payload (mock adapter),
+// the page falls back to the deterministic client-side estimate/simulation below,
+// so the backend-free demo build keeps working and stays interactive.
 
 const DATA_SOURCES = [
   { key: 'QMM_InspectionData_import', label: 'Raw Subsample Measurements', grain: 'Raw rows', defRetention: 24 },
@@ -50,9 +58,16 @@ const DataPurgeConfig = () => {
   const [dryRun, setDryRun] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [result, setResult] = useState(null);
+  // Real per-source counts from /data-purge-preview ({ key: rows }); null => use
+  // the local estimate (API unreachable or demo mode).
+  const [serverSources, setServerSources] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [apiError, setApiError] = useState(null);
 
-  // Illustrative impact estimate (deterministic, no backend) so the page reads
-  // as a real tool. Replaced by a backend count query in the API phase.
+  const rulePayload = () => rules.map((r) => ({ key: r.key, retention: r.retention, enabled: r.enabled }));
+
+  // Local fallback estimate (deterministic, no backend) so the page stays usable
+  // and interactive when the API is not reachable (e.g. the demo build).
   const estimate = useMemo(() => {
     const cutoff = new Date(olderThan).getTime();
     const monthsOld = Math.max(0, Math.round((Date.now() - cutoff) / (1000 * 60 * 60 * 24 * 30)));
@@ -66,8 +81,69 @@ const DataPurgeConfig = () => {
       });
   }, [rules, dept, olderThan]);
 
-  const totalRows = estimate.reduce((a, b) => a + b.rows, 0);
+  // Prefer real backend counts when present; otherwise the local estimate.
+  const displaySources = useMemo(
+    () => estimate.map((e) => ({
+      ...e,
+      rows: serverSources && serverSources[e.key] != null ? serverSources[e.key] : e.rows,
+    })),
+    [estimate, serverSources]
+  );
+  const totalRows = displaySources.reduce((a, b) => a + Number(b.rows || 0), 0);
   const enabledCount = rules.filter((r) => r.enabled).length;
+
+  // Live preview: fetch real eligible-row counts whenever the scope changes.
+  // Debounced so dragging the retention number field doesn't spam the API.
+  useEffect(() => {
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const res = await axios.post(
+          `${window.baseURL}/data-purge-preview`,
+          { dept, olderThan, rules: rulePayload() },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+        const data = res.data;
+        // A live API always returns a non-empty `sources` array (one row per enabled
+        // source, even when its count is 0). The demo mock returns []/no sources.
+        if (!cancelled && data && Array.isArray(data.sources) && data.sources.length) {
+          const map = {};
+          data.sources.forEach((s) => { map[s.key] = Number(s.rows) || 0; });
+          setServerSources(map);
+          setApiError(null);
+        } else if (!cancelled) {
+          setServerSources(null);
+        }
+      } catch (e) {
+        if (!cancelled) { setServerSources(null); setApiError('Purge API unreachable — showing local estimate.'); }
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rules, dept, olderThan]);
+
+  // Seed "Last Action" from the real audit trail on mount (if any purge has run).
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await axios.get(`${window.baseURL}/data-purge-audit`);
+        const rows = res.data;
+        if (Array.isArray(rows) && rows.length) {
+          const r = rows[0];
+          setResult({
+            when: r.ExecutedAt ? new Date(r.ExecutedAt).toLocaleString() : '',
+            dryRun: !!r.DryRun,
+            dept: r.Dept ?? 'All',
+            olderThan: r.OlderThan ?? '',
+            rows: Number(r.TotalRows) || 0,
+            sources: Number(r.SourceCount) || 0,
+            historical: true,
+          });
+        }
+      } catch (e) { /* no audit table yet — ignore */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const now = new Date();
   const lastUpdatedStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const lastUpdatedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -77,16 +153,44 @@ const DataPurgeConfig = () => {
   const toggleEnabled = (key) =>
     setRules((rs) => rs.map((r) => (r.key === key ? { ...r, enabled: !r.enabled } : r)));
 
-  const runPurge = () => {
+  // Local simulation fallback (demo / API down) — mirrors the old behaviour.
+  const simulateResult = (extra = {}) => setResult({
+    when: new Date().toLocaleString(),
+    dryRun, dept, olderThan,
+    rows: totalRows,
+    sources: displaySources.filter((e) => e.rows > 0).length,
+    ...extra,
+  });
+
+  const runPurge = async () => {
     setConfirmOpen(false);
-    setResult({
-      when: new Date().toLocaleString(),
-      dryRun,
-      dept,
-      olderThan,
-      rows: totalRows,
-      sources: estimate.filter((e) => e.rows > 0).length,
-    });
+    setBusy(true);
+    try {
+      const res = await axios.post(
+        `${window.baseURL}/data-purge-execute`,
+        { dept, olderThan, dryRun, rules: rulePayload() },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      const data = res.data;
+      if (data && typeof data.totalRows === 'number') {
+        setResult({
+          when: data.executedAt || new Date().toLocaleString(),
+          dryRun: data.dryRun,
+          dept: data.dept ?? dept,
+          olderThan: data.olderThan ?? olderThan,
+          rows: data.totalRows,
+          sources: Array.isArray(data.sources) ? data.sources.filter((s) => Number(s.rows) > 0).length : 0,
+        });
+        // After a real delete the rows are gone — re-fetch the preview counts.
+        if (!data.dryRun) setServerSources(null);
+      } else {
+        simulateResult(); // demo / no backend
+      }
+    } catch (e) {
+      simulateResult({ error: true });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -143,7 +247,7 @@ const DataPurgeConfig = () => {
                   </TableHead>
                   <TableBody>
                     {rules.map((r) => {
-                      const est = estimate.find((e) => e.key === r.key);
+                      const est = displaySources.find((e) => e.key === r.key);
                       const rows = est?.rows || 0;
                       const src = SOURCE_ICONS[r.key] || { Icon: DescriptionIcon, color: '#42a5f5' };
                       const SrcIcon = src.Icon;
@@ -234,11 +338,16 @@ const DataPurgeConfig = () => {
               </Stack>
               <Button
                 fullWidth variant="contained" color="error" startIcon={<DeleteSweepIcon />}
-                disabled={totalRows === 0}
+                disabled={totalRows === 0 || busy}
                 onClick={() => setConfirmOpen(true)}
               >
-                {dryRun ? 'Preview Purge' : 'Run Purge'}
+                {busy ? 'Working…' : (dryRun ? 'Preview Purge' : 'Run Purge')}
               </Button>
+              {apiError && (
+                <Typography variant="caption" sx={{ color: 'warning.main', display: 'block', mt: 1 }}>
+                  {apiError}
+                </Typography>
+              )}
             </CardContent>
           </Card>
 
@@ -264,12 +373,16 @@ const DataPurgeConfig = () => {
           <CardContent>
             <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
               <HistoryIcon sx={{ color: '#90caf9' }} />
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Last Action</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                {result.historical ? 'Last Action (from audit trail)' : 'Last Action'}
+              </Typography>
             </Stack>
-            <Alert severity={result.dryRun ? 'info' : 'success'} sx={{ mb: 1 }}>
-              {result.dryRun
-                ? `Dry run completed — ${fmt(result.rows)} rows across ${result.sources} source(s) would be purged.`
-                : `Purge completed — ${fmt(result.rows)} rows across ${result.sources} source(s) removed.`}
+            <Alert severity={result.error ? 'error' : (result.dryRun ? 'info' : 'success')} sx={{ mb: 1 }}>
+              {result.error
+                ? `Purge API error — showing local estimate: ${fmt(result.rows)} rows across ${result.sources} source(s).`
+                : result.dryRun
+                  ? `Dry run completed — ${fmt(result.rows)} rows across ${result.sources} source(s) would be purged.`
+                  : `Purge completed — ${fmt(result.rows)} rows across ${result.sources} source(s) removed.`}
             </Alert>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {result.when} · Dept: {result.dept} · Older than: {result.olderThan}

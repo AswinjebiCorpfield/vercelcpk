@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, CircularProgress, TablePagination } from '@mui/material';
 import { formatMetric } from '../../utils/metricFormat';
+import { compareLotNoLast7 } from '../../utils/lotNo';
 import axios from 'axios';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import Button from '@mui/material/Button';
@@ -15,7 +16,7 @@ import Popover from '@mui/material/Popover';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import InputAdornment from '@mui/material/InputAdornment';
-import CsvExportButton, { buildExportFilename } from '../CsvExportButton';
+import CsvExportButton from '../CsvExportButton';
 import { PieChart, pieArcLabelClasses } from '@mui/x-charts/PieChart';
 import Collapse from '@mui/material/Collapse';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -27,6 +28,14 @@ function formatMonthYear(monthStr) {
     if (!year || !month) return monthStr;
     const date = new Date(`${year}-${month}-01`);
     return `${date.toLocaleString('en-US', { month: 'short' })} ${year}`; // 'Feb 2024'
+}
+
+// Day-month-year for daily (line-chart) drill-in filenames, e.g. '15 Mar 2026'.
+function formatDayMonthYear(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date)) return dateStr;
+    return `${date.getDate()} ${date.toLocaleString('en-US', { month: 'short' })} ${date.getFullYear()}`;
 }
 
 function formatMonthDate(dateStr) {
@@ -104,7 +113,7 @@ const IndividualLotClickedTable = () => {
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(500);
-    const [orderBy, setOrderBy] = useState('Period');
+    const [orderBy, setOrderBy] = useState('LotNo');
     const [order, setOrder] = useState('asc');
     const [filterValues, setFilterValues] = useState({});
     const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -165,7 +174,7 @@ const IndividualLotClickedTable = () => {
         if (saved) {
             try {
                 const stateObj = JSON.parse(saved);
-                setOrderBy(stateObj.orderBy ?? 'Period');
+                setOrderBy(stateObj.orderBy ?? 'LotNo');
                 setOrder(stateObj.order ?? 'asc');
                 setPage(stateObj.page ?? 0);
                 setRowsPerPage(stateObj.rowsPerPage ?? 500);
@@ -352,6 +361,12 @@ const IndividualLotClickedTable = () => {
                 aValue = a[orderBy];
                 bValue = b[orderBy];
             }
+            // Lot No. sorts by its last 7 digits (e.g. 2603_005), ascending.
+            if (orderBy === 'LotNo') {
+                return order === 'asc'
+                    ? compareLotNoLast7(a.LotNo, b.LotNo)
+                    : compareLotNoLast7(b.LotNo, a.LotNo);
+            }
             // Numeric sort for numeric columns
             if (columns.find(col => col.id === orderBy && col.isNumeric)) {
                 aValue = parseFloat(aValue ?? 0);
@@ -513,7 +528,7 @@ const IndividualLotClickedTable = () => {
                         </Box>
                         {/* Carbonizing Furnace Pie */}
                         <Box sx={{ mb: 4 }}>
-                            <Typography variant="h6" sx={{ mb: 1, color: 'primary.main', textAlign: 'center', fontWeight: 700 }}>
+                            <Typography variant="h6" sx={{ mb: 1, color: 'text.primary', textAlign: 'center', fontWeight: 700 }}>
                                 Carburizing Furnace
                             </Typography>
                             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', gap: 2 }}>
@@ -579,7 +594,7 @@ const IndividualLotClickedTable = () => {
                         </Box>
                         {/* Tempering Furnace Pie */}
                         <Box sx={{ mb: 4 }}>
-                            <Typography variant="h6" sx={{ mb: 1, color: 'success.main', textAlign: 'center', fontWeight: 700 }}>
+                            <Typography variant="h6" sx={{ mb: 1, color: 'text.primary', textAlign: 'center', fontWeight: 700 }}>
                                 Tempering Furnace
                             </Typography>
                             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', gap: 2 }}>
@@ -644,7 +659,7 @@ const IndividualLotClickedTable = () => {
                         </Box>
                         {/* Material Desc Pie */}
                         <Box sx={{ mb: 4 }}>
-                            <Typography variant="h6" sx={{ mb: 1, color: 'warning.main', textAlign: 'center', fontWeight: 700 }}>
+                            <Typography variant="h6" sx={{ mb: 1, color: 'text.primary', textAlign: 'center', fontWeight: 700 }}>
                                 Product Group
                             </Typography>
                             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', gap: 2 }}>
@@ -743,7 +758,7 @@ const IndividualLotClickedTable = () => {
                     <CsvExportButton
                         data={pieFilteredData}
                         headers={columns.filter(col => col.id !== 'FurtherAnalysis').map(col => col.id)}
-                        filename={buildExportFilename(pieFilteredData[0]?.MaterialDesc, formatMonthYear(date?.substring(0, 7)), 'Individual_Lot')}
+                        filename={`${seriesId.slice(0, 2) === 'nc' ? 'Cpk<1' : 'Cpk≥1'} Individual Lot Measurement Table_${periodType === 'date' ? formatDayMonthYear(date) : formatMonthYear(date?.substring(0, 7))}.csv`}
                         generalInfo={[
                             { label: 'Report', value: 'Individual Lot Measurement Table' },
                             { label: 'MeasDate', value: formatMonthYear(date?.substring(0, 7)) },

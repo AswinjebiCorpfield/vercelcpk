@@ -166,25 +166,19 @@ const OverallLotsClickedTable = () => {
         delete otherFilters[colId];
         const relevantData = applyFilters(sortedData, otherFilters);
         
-        // 对于 MaterialDesc，返回前两个字母分组，保持与 pie chart 一致
+        // MaterialDesc: full, distinct Material Descriptions for the searchable
+        // dropdown column filter, narrowed by the typed search text.
         if (colId === 'MaterialDesc') {
-            const groups = new Set();
+            const set = new Set();
             relevantData.forEach(row => {
                 const val = row.MaterialDesc;
                 if (val && val !== '') {
-                    const items = val.split(',').map(item => item.trim()).filter(item => item !== '');
-                    items.forEach(item => {
-                        groups.add(item.slice(0, 2));
-                    });
+                    val.split(',').map(item => item.trim()).filter(Boolean).forEach(item => set.add(item));
                 }
             });
-            let unique = Array.from(groups).sort();
-            
-            // Input filter
+            let unique = Array.from(set).sort((a, b) => a.localeCompare(b));
             if (inputVal && inputVal !== '') {
-                unique = unique.filter(opt =>
-                    opt?.toString().toLowerCase().includes(inputVal.toLowerCase())
-                );
+                unique = unique.filter(opt => opt.toLowerCase().includes(inputVal.toLowerCase()));
             }
             return unique;
         }
@@ -430,7 +424,7 @@ const OverallLotsClickedTable = () => {
                         </Box>
                         {/* Carbonizing Furnace Pie */}
                         <Box sx={{ mb: 4 }}>
-                            <Typography variant="h6" sx={{ mb: 1, color: 'primary.main', textAlign: 'center', fontWeight: 700 }}>
+                            <Typography variant="h6" sx={{ mb: 1, color: 'text.primary', textAlign: 'center', fontWeight: 700 }}>
                                 Carburizing Furnace
                             </Typography>
                             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', gap: 2 }}>
@@ -515,7 +509,7 @@ const OverallLotsClickedTable = () => {
                         </Box>
                         {/* Tempering Furnace Pie */}
                         <Box sx={{ mb: 4 }}>
-                            <Typography variant="h6" sx={{ mb: 1, color: 'success.main', textAlign: 'center', fontWeight: 700 }}>
+                            <Typography variant="h6" sx={{ mb: 1, color: 'text.primary', textAlign: 'center', fontWeight: 700 }}>
                                 Tempering Furnace
                             </Typography>
                             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', gap: 2 }}>
@@ -600,7 +594,7 @@ const OverallLotsClickedTable = () => {
                         </Box>
                         {/* Material Desc Pie */}
                         <Box sx={{ mb: 4 }}>
-                            <Typography variant="h6" sx={{ mb: 1, color: 'warning.main', textAlign: 'center', fontWeight: 700 }}>
+                            <Typography variant="h6" sx={{ mb: 1, color: 'text.primary', textAlign: 'center', fontWeight: 700 }}>
                                 Product Group
                             </Typography>
                             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', gap: 2 }}>
@@ -728,7 +722,7 @@ const OverallLotsClickedTable = () => {
                             BatchMC2: 'Carburizing Furnace',
                             BatchMC4: 'Tempering Furnace',
                         }}
-                        filename={`Dimension_Measurement_${formatMonthYear(date) || 'Export'}.csv`}
+                        filename={`${metric === 'PPK' ? 'Ppk' : 'Cpk'}${resultType === 'ac' ? '≥1' : '<1'} Dimension Measurement Table_${formatMonthYear(date) || 'Export'}.csv`}
                         generalInfo={[
                             { label: 'Report', value: 'Dimension Measurement Table' },
                             { label: 'Period', value: formatMonthYear(date) },
@@ -1086,7 +1080,7 @@ const OverallLotsClickedTable = () => {
                                 </>
                             ) : filterColumn === 'MaterialDesc' ? (
                                 <>
-                                    {/* BRD M2c: standard text search filter (was a 2-letter group selector). */}
+                                    {/* Searchable dropdown: type to narrow, click an option to select. */}
                                     <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Search Material Description</Typography>
                                     <TextField
                                         autoFocus
@@ -1095,7 +1089,59 @@ const OverallLotsClickedTable = () => {
                                         placeholder="Type to search…"
                                         value={typeof filterValues[filterColumn] === 'string' ? filterValues[filterColumn] : ''}
                                         onChange={(e) => handleFilterChange(filterColumn, e.target.value)}
+                                        sx={{ mb: 1 }}
                                     />
+                                    <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Options</Typography>
+                                    <Box sx={{
+                                        maxHeight: 240,
+                                        overflowY: 'auto',
+                                        border: '1px solid', borderColor: 'divider',
+                                        borderRadius: 1,
+                                        p: 0,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        fontSize: '1rem'
+                                    }}>
+                                        {(() => {
+                                            const search = typeof filterValues[filterColumn] === 'string' ? filterValues[filterColumn] : '';
+                                            const options = getAllOptions('MaterialDesc', search);
+                                            return (
+                                                <>
+                                                    {options.length === 0 && (
+                                                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, px: 2 }}>
+                                                            No matching result
+                                                        </Typography>
+                                                    )}
+                                                    {options.map(option => (
+                                                        <Box
+                                                            key={option}
+                                                            sx={{
+                                                                cursor: 'pointer',
+                                                                px: 2,
+                                                                py: 1,
+                                                                borderRadius: 1,
+                                                                transition: 'background 0.15s',
+                                                                background: filterValues[filterColumn] === option ? '#1976d2' : undefined,
+                                                                color: filterValues[filterColumn] === option ? '#fff' : undefined,
+                                                                fontWeight: filterValues[filterColumn] === option ? 600 : undefined,
+                                                                fontSize: '1rem',
+                                                                minHeight: 40,
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                '&:hover': { background: '#1976d2', color: '#fff' },
+                                                            }}
+                                                            onClick={() => {
+                                                                const currentVal = filterValues[filterColumn];
+                                                                handleFilterChange(filterColumn, currentVal === option ? '' : option);
+                                                            }}
+                                                        >
+                                                            {option}
+                                                        </Box>
+                                                    ))}
+                                                </>
+                                            );
+                                        })()}
+                                    </Box>
                                     <Box
                                         sx={{
                                             cursor: 'pointer',

@@ -4,7 +4,10 @@ import dayjs from 'dayjs';
 
 const escapeCsvField = (field) => {
   if (field === null || field === undefined) return '';
-  const str = String(field);
+  // BRD data-export fix ("incorrect display for > or <"): normalize the math
+  // comparison symbols to ASCII (≥ → >=, ≤ → <=) so they render correctly in
+  // Excel regardless of the user's system locale / whether it honours the BOM.
+  const str = String(field).replace(/≥/g, '>=').replace(/≤/g, '<=');
   if (str.includes('"')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
@@ -34,25 +37,39 @@ const CsvExportButton = ({ data, headers, filename = 'data.csv', generalInfo, st
 
     const lines = [];
 
+    // Excel right-aligns any cell it parses as a number. Prefixing a numeric value
+    // with a space (in a quoted field) makes Excel keep it as text, so the Statistics
+    // values left-align to match the (text) General Information block. Non-numeric
+    // values (e.g. "*", "-", dates) are already left-aligned and pass through.
+    const leftAlignCell = (value) => {
+      const s = String(value ?? '');
+      if (s !== '' && !isNaN(s) && isFinite(Number(s))) {
+        return `" ${s.replace(/"/g, '""')}"`;
+      }
+      return escapeCsvField(value);
+    };
+
     // Emit a labelled block. Default: one "label,value" row per field (vertical).
     // With sectionsAsColumns: a header row of field labels + a single values row,
-    // so each field lands in its own separate column.
-    const pushBlock = (heading, rows) => {
+    // so each field lands in its own separate column. `leftAlign` forces numeric
+    // values to be treated as left-aligned text in Excel.
+    const pushBlock = (heading, rows, leftAlign = false) => {
       if (!Array.isArray(rows) || !rows.length) return;
       lines.push(escapeCsvField(heading));
+      const valueCell = leftAlign ? leftAlignCell : escapeCsvField;
       if (sectionsAsColumns) {
         lines.push(rows.map(r => escapeCsvField(r.label)).join(','));
-        lines.push(rows.map(r => escapeCsvField(r.value)).join(','));
+        lines.push(rows.map(r => valueCell(r.value)).join(','));
       } else {
         rows.forEach(({ label, value }) => {
-          lines.push(`${escapeCsvField(label)},${escapeCsvField(value)}`);
+          lines.push(`${escapeCsvField(label)},${valueCell(value)}`);
         });
       }
       lines.push(''); // blank separator row
     };
 
     pushBlock('General Information', generalInfo);
-    pushBlock('Statistics', statistics);
+    pushBlock('Statistics', statistics, true);
 
     const headerLine = headers
       .map(h => (headerLabels && headerLabels[h] != null)

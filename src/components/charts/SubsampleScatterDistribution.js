@@ -20,7 +20,7 @@ import 'dayjs/locale/en';
 import axios from 'axios';
 import createPlotlyComponent from 'react-plotly.js/factory';
 import Plotly from 'plotly.js-dist-min';
-import { PieChart, pieArcLabelClasses } from '@mui/x-charts/PieChart';
+import { PieChart } from '@mui/x-charts/PieChart';
 import * as d3 from 'd3-array';
 import CsvExportButton, { buildExportFilename } from '../CsvExportButton';
 import LotCPKBarChart from './LotCPKBarChart';
@@ -945,7 +945,7 @@ const SubsampleScatterDistribution = () => {
         headers={downloadColumns}
         filename={buildExportFilename(selectedData?.MaterialDesc, 'Subsample_Scatter')}
         generalInfo={[
-          { label: 'Report', value: 'HRA/HRC Scattered Subsample Distribution' },
+          { label: 'Report', value: 'Subsample Distribution — Raw Data' },
           { label: 'Dept', value: selectedData?.Dept || '' },
           { label: 'MachineId', value: selectedData?.MachineId || '' },
           { label: 'MaterialDesc', value: selectedData?.MaterialDesc || '' },
@@ -1262,76 +1262,94 @@ const SubsampleScatterDistribution = () => {
           </Stack>
           <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
             {/* MC2 Pie (Carburizing) */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
               <Typography variant="subtitle1" textAlign="center" sx={{ mb: 1, fontWeight: 600 }}>Carburizing Furnace (TVC)</Typography>
-              <Box sx={{ position: 'relative', width: 270, height: 270 }}>
-                <PieChart
-                  series={[
-                    {
-                      data: furnacePieDataSorted.length
-                        ? furnacePieDataSorted
-                        : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)', rawLabel: 'No Data' }],
-                      arcLabelMinAngle: 10,
-                      arcLabelRadius: '90%',
-                      highlightScope: { faded: 'global', highlighted: 'item' },
-                      cornerRadius: 6,
-                      paddingAngle: 2,
-                      innerRadius: 68,
-                      outerRadius: 118,
-                      color: (item) => item.color,
-                    },
-                  ]}
-                  sx={{ [`& .${pieArcLabelClasses.root}`]: { fontWeight: 'bold', fontSize: 12, paintOrder: 'stroke', stroke: '#222', strokeWidth: 2, textShadow: '0 2px 6px #fff, 0 0 2px #fff' } }}
-                  slotProps={{ legend: { hidden: true } }}
-                  width={270}
-                  height={270}
-                  margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-                  onItemClick={(event, d) => {
-                    const pie = furnacePieDataSorted[d.dataIndex];
-                    if (!pie) return;
-                    if (clickedFurnace && clickedFurnace.type === 'MC2' && clickedFurnace.label === pie.rawLabel) setClickedFurnace(null);
-                    else setClickedFurnace({ type: 'MC2', label: pie.rawLabel, color: pie.color });
-                  }}
-                />
-                <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{furnacePieDataSorted.reduce((s, d) => s + (Number(d.value) || 0), 0)}</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1.5, width: '100%' }}>
+                <Box sx={{ position: 'relative', width: 160, height: 160, flexShrink: 0 }}>
+                  <PieChart
+                    series={[
+                      {
+                        data: furnacePieDataSorted.length
+                          ? furnacePieDataSorted
+                          : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)', rawLabel: 'No Data' }],
+                        highlightScope: { faded: 'global', highlighted: 'item' },
+                        cornerRadius: 6,
+                        paddingAngle: 2,
+                        innerRadius: 48,
+                        outerRadius: 74,
+                        cx: 80,
+                        cy: 80,
+                        color: (item) => item.color,
+                      },
+                    ]}
+                    slotProps={{ legend: { hidden: true } }}
+                    width={160}
+                    height={160}
+                    margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                    onItemClick={(event, d) => {
+                      const pie = furnacePieDataSorted[d.dataIndex];
+                      if (!pie) return;
+                      if (clickedFurnace && clickedFurnace.type === 'MC2' && clickedFurnace.label === pie.rawLabel) setClickedFurnace(null);
+                      else setClickedFurnace({ type: 'MC2', label: pie.rawLabel, color: pie.color });
+                    }}
+                  />
+                  <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{furnacePieDataSorted.reduce((s, d) => s + (Number(d.value) || 0), 0)}</Typography>
+                  </Box>
+                </Box>
+                {/* TVC labelling beside the pie */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, alignItems: 'flex-start', minWidth: 0 }}>
+                  {(furnacePieDataSorted.length ? furnacePieDataSorted : []).map((item) => (
+                    <Box key={item.rawLabel ?? item.label} sx={{ px: 1, py: 0.5, borderRadius: 1, border: '1px solid', borderColor: item.color, color: item.color, fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>
+                      {(item.rawLabel ?? item.label)} ({item.value})
+                    </Box>
+                  ))}
                 </Box>
               </Box>
             </Box>
             {/* MC4 Pie (Tempering) */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
               <Typography variant="subtitle1" textAlign="center" sx={{ mb: 1, fontWeight: 600 }}>Tempering Furnace (TAT)</Typography>
-              <Box sx={{ position: 'relative', width: 270, height: 270 }}>
-                <PieChart
-                  series={[
-                    {
-                      data: temperingPieDataSorted.length
-                        ? temperingPieDataSorted
-                        : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)', rawLabel: 'No Data' }],
-                      arcLabelMinAngle: 10,
-                      arcLabelRadius: '90%',
-                      highlightScope: { faded: 'global', highlighted: 'item' },
-                      cornerRadius: 6,
-                      paddingAngle: 2,
-                      innerRadius: 68,
-                      outerRadius: 118,
-                      color: (item) => item.color,
-                    },
-                  ]}
-                  onItemClick={(event, d) => {
-                    const pie = temperingPieDataSorted[d.dataIndex];
-                    if (!pie) return;
-                    if (clickedFurnace && clickedFurnace.type === 'MC4' && clickedFurnace.label === pie.rawLabel) setClickedFurnace(null);
-                    else setClickedFurnace({ type: 'MC4', label: pie.rawLabel, color: pie.color });
-                  }}
-                  sx={{ [`& .${pieArcLabelClasses.root}`]: { fontWeight: 'bold', fontSize: 12, paintOrder: 'stroke', stroke: '#222', strokeWidth: 2, textShadow: '0 2px 6px #fff, 0 0 2px #fff' } }}
-                  slotProps={{ legend: { hidden: true } }}
-                  width={270}
-                  height={270}
-                  margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-                />
-                <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{temperingPieDataSorted.reduce((s, d) => s + (Number(d.value) || 0), 0)}</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1.5, width: '100%' }}>
+                <Box sx={{ position: 'relative', width: 160, height: 160, flexShrink: 0 }}>
+                  <PieChart
+                    series={[
+                      {
+                        data: temperingPieDataSorted.length
+                          ? temperingPieDataSorted
+                          : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)', rawLabel: 'No Data' }],
+                        highlightScope: { faded: 'global', highlighted: 'item' },
+                        cornerRadius: 6,
+                        paddingAngle: 2,
+                        innerRadius: 48,
+                        outerRadius: 74,
+                        cx: 80,
+                        cy: 80,
+                        color: (item) => item.color,
+                      },
+                    ]}
+                    onItemClick={(event, d) => {
+                      const pie = temperingPieDataSorted[d.dataIndex];
+                      if (!pie) return;
+                      if (clickedFurnace && clickedFurnace.type === 'MC4' && clickedFurnace.label === pie.rawLabel) setClickedFurnace(null);
+                      else setClickedFurnace({ type: 'MC4', label: pie.rawLabel, color: pie.color });
+                    }}
+                    slotProps={{ legend: { hidden: true } }}
+                    width={160}
+                    height={160}
+                    margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                  />
+                  <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{temperingPieDataSorted.reduce((s, d) => s + (Number(d.value) || 0), 0)}</Typography>
+                  </Box>
+                </Box>
+                {/* TAT labelling beside the pie */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, alignItems: 'flex-start', minWidth: 0 }}>
+                  {(temperingPieDataSorted.length ? temperingPieDataSorted : []).map((item) => (
+                    <Box key={item.rawLabel ?? item.label} sx={{ px: 1, py: 0.5, borderRadius: 1, border: '1px solid', borderColor: item.color, color: item.color, fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>
+                      {(item.rawLabel ?? item.label)} ({item.value})
+                    </Box>
+                  ))}
                 </Box>
               </Box>
             </Box>
@@ -1373,6 +1391,7 @@ const SubsampleScatterDistribution = () => {
             // narrower label column (xs=3/9 instead of 5/7).
             <Grid container spacing={1}>
               {[
+                { label: 'Period', value: periodRangeLabel },
                 { label: 'Dept', value: selectedData?.Dept ?? '-' },
                 { label: 'MachineId', value: selectedData?.MachineId ?? '-' },
                 { label: 'MaterialDesc', value: selectedData?.MaterialDesc ?? '-', long: true },
@@ -1415,6 +1434,33 @@ const SubsampleScatterDistribution = () => {
             <QueryStatsIcon sx={{ color: 'primary.main' }} />
             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Statistics</Typography>
           </Stack>
+          {legacyGeneralInfo ? (
+            // Historical Dimension / Key Focus: Statistics follows the General
+            // Information row layout (label left, value right-aligned bold).
+            <Grid container spacing={1}>
+              {[
+                { label: 'No of Data', value: statisticsToShow?.Count ?? allData.length ?? '-' },
+                { label: 'Mean', value: statisticsToShow?.MeanValue ?? '-' },
+                { label: 'Std Dev', value: statisticsToShow?.StdValue != null ? Number(statisticsToShow.StdValue).toFixed(3) : '-' },
+                { label: 'LSL', value: allData[0]?.LSL ?? '-' },
+                { label: 'USL', value: allData[0]?.USL ?? '-' },
+                { label: 'Target', value: targetValue, color: 'success.main' },
+                { label: 'CP', value: statisticsToShow?.CPValue ?? '-', color: metricColor(statisticsToShow?.CPValue) },
+                { label: 'CPK', value: statisticsToShow?.CPKValue ?? '-', color: metricColor(statisticsToShow?.CPKValue) },
+                { label: 'PP', value: statisticsToShow?.PPValue ?? '-', color: metricColor(statisticsToShow?.PPValue) },
+                { label: 'PPK', value: statisticsToShow?.PPKValue ?? '-', color: metricColor(statisticsToShow?.PPKValue) },
+              ].map((s) => (
+                <Grid container item xs={12} alignItems="top" key={s.label}>
+                  <Grid item xs={5}>
+                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>{s.label}:</Typography>
+                  </Grid>
+                  <Grid item xs={7}>
+                    <Typography variant="body1" sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: 15, wordBreak: 'break-word', color: s.color || 'text.primary' }}>{s.value}</Typography>
+                  </Grid>
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
           <Grid container spacing={1.5}>
             {[
               { label: 'No of Data', value: statisticsToShow?.Count ?? allData.length ?? '-' },
@@ -1459,6 +1505,7 @@ const SubsampleScatterDistribution = () => {
               })()}
             </Grid>
           </Grid>
+          )}
         </Box>
       </Grid>
     </Grid>

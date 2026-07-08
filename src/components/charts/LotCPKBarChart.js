@@ -745,33 +745,29 @@ const LotCPKBarChart = () => {
             {/* Overview */}
             <Grid item xs={12} md={2} sx={{ maxWidth: { md: 200 } }}>
               <Box sx={{ width: '100%', px: 1.5, py: 1 }}>
-                <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                  Individual Lot
-                </Typography>
-                <Typography sx={{ fontSize: 13, color: 'text.secondary', fontWeight: 600, mb: 1.5 }}>
-                  Monthly CPK
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1.5 }}>
+                  Individual Lot Cpk Scorecard
                 </Typography>
                 <Stack spacing={1}>
                   <KpiTile label="CPK ≥ 1 Percentage" color={KPI.pct}
                     value={`${monthlyDatasetsFilled.averagePercentage.toFixed(1)}%`} />
-                  {displayMode === 'Count' && (
-                    <>
-                      <KpiTile label="CPK ≥ 1 Lots Count" color={KPI.ac}
-                        value={new Intl.NumberFormat().format(monthlyDatasetsFilled.totalAC)} />
-                      <KpiTile label="CPK < 1 Lots Count" color={KPI.nc}
-                        value={new Intl.NumberFormat().format(monthlyDatasetsFilled.totalNC)} />
-                    </>
-                  )}
+                  <KpiTile label="CPK ≥ 1 Lots Count" color={KPI.ac}
+                    value={new Intl.NumberFormat().format(monthlyDatasetsFilled.totalAC)} />
+                  <KpiTile label="CPK < 1 Lots Count" color={KPI.nc}
+                    value={new Intl.NumberFormat().format(monthlyDatasetsFilled.totalNC)} />
                 </Stack>
+                <Typography
+                  variant="body2"
+                  sx={{ color: 'primary.main', fontStyle: 'italic', mt: 2, letterSpacing: 0.3 }}
+                >
+                  ⓘ Important Note: Click a column bar to view details.
+                </Typography>
               </Box>
             </Grid>
             {/* Bar chart */}
             <Grid item xs={12} md sx={{ minWidth: 400, overflow: 'auto', flexGrow: 1, flexBasis: 0, maxWidth: 'none' }}>
-              <Typography
-                variant="body2"
-                sx={{ color: 'primary.main', fontStyle: 'italic', mb: 1, ml: 1, letterSpacing: 0.3 }}
-              >
-                ⓘ Important Note: Click a column bar to view details.
+              <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center', mb: 1 }}>
+                Individual Lot Monthly Cpk Performance ({displayMode === 'Count' ? 'Count' : 'Percentage'})
               </Typography>
               <Box sx={{ marginBottom: 2, width: '100%', overflowX: 'auto' }}>
                 {dataLoading || monthlyData === null ? (
@@ -787,9 +783,9 @@ const LotCPKBarChart = () => {
                   </Box>
                 ) : (
                   // <div className="custom-x-padding-bottom">
-                  <div style={{ width: '100%', minWidth: 520 }}>
+                  <div style={{ width: '100%', minWidth: 600 }}>
                     <BarChart
-                      height={370}
+                      height={500}
                       sx={(theme) => ({
                         "& .MuiChartsAxis-directionY .MuiChartsAxis-label": {
                           fill: `${theme.palette.primary.main} !important`,
@@ -797,7 +793,7 @@ const LotCPKBarChart = () => {
                         },
                       })}
                       slotProps={{ legend: { labelStyle: { fontSize: 16 }, position: { vertical: 'bottom', horizontal: 'middle' }, direction: 'row' }, noDataOverlay: { message: 'No Result' } }}
-                      margin={{ left: 80, right: 50, top: monthlyManyPoints ? 70 : 50, bottom: monthlyManyPoints ? 130 : 110 }}
+                      margin={{ left: 80, right: 50, top: monthlyManyPoints ? 75 : 55, bottom: monthlyManyPoints ? 130 : 110 }}
                       series={[
                         {
                           data: displayMode === 'Percentage' ? monthlyDatasetsFilled.acPercent : monthlyDatasetsFilled.acData,
@@ -843,17 +839,13 @@ const LotCPKBarChart = () => {
                       }}
                       onItemClick={(event, d) => handleBarClick(event, d, monthlyDatasetsFilled)}
                     >
-                      <StackTotalLabels
-                        categories={monthlyDatasetsFilled.xLabels.map(formatMonthYear)}
-                        totals={monthlyDatasetsFilled.acData.map((ac, i) => (Number(ac) || 0) + (Number(monthlyDatasetsFilled.ncData[i]) || 0))}
-                        positions={displayMode === 'Percentage'
-                          ? monthlyDatasetsFilled.acPercent.map((ac, i) => (Number(ac) || 0) + (Number(monthlyDatasetsFilled.ncPercent[i]) || 0))
-                          : undefined}
-                        labels={displayMode === 'Percentage'
-                          ? monthlyDatasetsFilled.acData.map((ac, i) => new Intl.NumberFormat().format((Number(ac) || 0) + (Number(monthlyDatasetsFilled.ncData[i]) || 0)))
-                          : undefined}
-                        angle={monthlyManyPoints ? -90 : 0}
-                      />
+                      {displayMode === 'Count' && (
+                        <StackTotalLabels
+                          categories={monthlyDatasetsFilled.xLabels.map(formatMonthYear)}
+                          totals={monthlyDatasetsFilled.acData.map((ac, i) => (Number(ac) || 0) + (Number(monthlyDatasetsFilled.ncData[i]) || 0))}
+                          angle={monthlyManyPoints ? -90 : 0}
+                        />
+                      )}
                     </BarChart>
                   </div>
                 )}
@@ -869,29 +861,28 @@ const LotCPKBarChart = () => {
             <Grid item xs={12} md={2} sx={{ maxWidth: { md: 200 } }}>
               <Box sx={{ width: '100%', px: 1.5, py: 1 }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1.5 }}>
-                  Lot Daily CPK
+                  Individual Lot Cpk Scorecard
                 </Typography>
                 <Stack spacing={1}>
                   <KpiTile label="CPK ≥ 1 Percentage" color={KPI.pct}
                     value={`${dailyDatasetsFilled.averagePercentage.toFixed(1)}%`} />
-                  {displayMode === 'Count' && (
-                    <>
-                      <KpiTile label="CPK ≥ 1 Lots Count" color={KPI.ac}
-                        value={new Intl.NumberFormat().format(dailyDatasetsFilled.totalAC)} />
-                      <KpiTile label="CPK < 1 Lots Count" color={KPI.nc}
-                        value={new Intl.NumberFormat().format(dailyDatasetsFilled.totalNC)} />
-                    </>
-                  )}
+                  <KpiTile label="CPK ≥ 1 Lots Count" color={KPI.ac}
+                    value={new Intl.NumberFormat().format(dailyDatasetsFilled.totalAC)} />
+                  <KpiTile label="CPK < 1 Lots Count" color={KPI.nc}
+                    value={new Intl.NumberFormat().format(dailyDatasetsFilled.totalNC)} />
                 </Stack>
+                <Typography
+                  variant="body2"
+                  sx={{ color: 'primary.main', fontStyle: 'italic', mt: 2, letterSpacing: 0.3 }}
+                >
+                  ⓘ Important Note: Click a line data point to view details.
+                </Typography>
               </Box>
             </Grid>
             {/* Line chart */}
             <Grid item xs={12} md sx={{ minWidth: 400, overflow: 'auto', flexGrow: 1, flexBasis: 0, maxWidth: 'none' }}>
-              <Typography
-                variant="body2"
-                sx={{ color: 'primary.main', fontStyle: 'italic', mb: 1, ml: 1, letterSpacing: 0.3 }}
-              >
-                ⓘ Important Note: Click a line data point to view details.
+              <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center', mb: 1 }}>
+                Individual Lot Daily Cpk Performance ({displayMode === 'Count' ? 'Count' : 'Percentage'})
               </Typography>
               <Box sx={{ marginBottom: 2, overflowX: 'auto', width: '100%' }}>
                 {dataLoading || dailyData === null ? (

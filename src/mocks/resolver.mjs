@@ -74,6 +74,13 @@ export function resolveFixture(fixtures, config) {
     }
     case '/overall-lots-nc-rank':
       return fixtures.materialRank;
+    // Data Purge (BRD General #5): the demo build has no DB to purge, so we return
+    // empty payloads. DataPurgeConfig detects the missing `sources`/`totalRows` and
+    // falls back to its interactive client-side estimate + simulated purge.
+    case '/data-purge-preview':
+    case '/data-purge-execute':
+    case '/data-purge-audit':
+      return [];
     default:
       return undefined;
   }
