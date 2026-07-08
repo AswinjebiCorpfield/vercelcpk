@@ -40,7 +40,7 @@ import FormatSizeIcon from '@mui/icons-material/FormatSize';
 import axios, { all } from 'axios';
 import FilterManager from '../FilterManager';
 import { useValue } from '../../context/ContextProvider';
-import CsvExportButton, { buildExportFilename } from '../CsvExportButton';
+import CsvExportButton from '../CsvExportButton';
 import { months } from 'dayjs/locale/en';
 
 function formatMonthCol(periodStr) {
