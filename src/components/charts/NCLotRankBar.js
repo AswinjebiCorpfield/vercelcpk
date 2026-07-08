@@ -100,6 +100,9 @@ const NCLotRankBar = () => {
     const [search, setSearch] = useState('');
     const [order, setOrder] = useState('desc');
     const [orderBy, setOrderBy] = useState('');
+    // Key Focus chart: how many materials to plot. Numbers = Top-N by Ppk<1 count;
+    // 'random' = 30 randomly sampled from the (already filter-applied) material list.
+    const [topN, setTopN] = useState(10);
     useEffect(() => { setPage(0); }, [materialNCData]);
     const [tvcNCData, setTvcNCData] = useState([]);
     const [tatNCData, setTatNCData] = useState([]);
@@ -344,7 +347,22 @@ useEffect(() => {
         fetchData();
     }, [filters]);
 
-    // Key Focus ranking data: Top-N materials by Ppk<1 Individual Lot count.
+    // Key Focus ranking data: Top-N materials by Ppk<1 Individual Lot count, or a
+    // random sample of 30. materialNCData is already filter-applied (API query),
+    // so both modes honour the active filters. Recomputed only when the source data
+    // or the selection changes, so the random pick stays stable across re-renders.
+    const chartMaterialData = useMemo(() => {
+        if (topN === 'random') {
+            const arr = [...materialNCData];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr.slice(0, 30);
+        }
+        return materialNCData.slice(0, topN);
+    }, [materialNCData, topN]);
+
     const materialPpkLessThanOneCountList = materialNCData.map(item => item.PPK_NC_Count);
     const isMaterialAllZero = materialPpkLessThanOneCountList.length > 0 && materialPpkLessThanOneCountList.every(v => v === 0);
 
@@ -507,9 +525,30 @@ useEffect(() => {
                         <Box sx={{ pt: 0, pb: 2, width: '100%' }}>
                             {/* KF1 — Clustered column: Top 10 Material Desc ranked by Ppk<1 Individual Lot Count */}
                             <Card sx={{ p: 3, mb: 3, backgroundColor: 'background.paper' }}>
-                                <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                                    Top 10 Material Description — Ranked by Ppk &lt; 1 Individual Lot Count
-                                </Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.5 }}>
+                                    <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                                        {topN === 'random'
+                                            ? 'Random 30 Material Description'
+                                            : `Top ${topN} Material Description`} — Ranked by Ppk &lt; 1 Individual Lot Count
+                                    </Typography>
+                                    <TextField
+                                        select
+                                        size="small"
+                                        label="Show"
+                                        value={topN}
+                                        onChange={(e) => {
+                                            const v = e.target.value;
+                                            setTopN(v === 'random' ? 'random' : Number(v));
+                                        }}
+                                        sx={{ minWidth: 130 }}
+                                        InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
+                                    >
+                                        <MenuItem value={10}>Top 10</MenuItem>
+                                        <MenuItem value={20}>Top 20</MenuItem>
+                                        <MenuItem value={30}>Top 30</MenuItem>
+                                        <MenuItem value={'random'}>Random 30</MenuItem>
+                                    </TextField>
+                                </Box>
                                 <Typography variant="body2" sx={{ color: 'primary.main', fontStyle: 'italic', mb: 2, letterSpacing: 0.3 }}>
                                     ⓘ Important Note: Click a bar — or the action buttons in the summary below — to drill into the analysis.
                                 </Typography>
@@ -520,13 +559,13 @@ useEffect(() => {
                                         height={460}
                                         margin={{ left: 54, right: 20, top: 16, bottom: 185 }}
                                         xAxis={[{
-                                            data: materialNCData.slice(0, 10).map(r => (r.MaterialDesc || '').split(' ').join('\n')),
+                                            data: chartMaterialData.map(r => (r.MaterialDesc || '').split(' ').join('\n')),
                                             scaleType: 'band',
                                             tickLabelStyle: { fontSize: 11.5, lineHeight: 1.25 },
                                         }]}
                                         yAxis={[{ tickLabelStyle: { fontSize: 12 } }]}
                                         series={[{
-                                            data: materialNCData.slice(0, 10).map(r => r.PPK_NC_Count),
+                                            data: chartMaterialData.map(r => r.PPK_NC_Count),
                                             label: 'Ppk < 1 Individual Lot Count',
                                             id: 'kfPpkLt1',
                                             color: '#26C6DA',
@@ -534,7 +573,7 @@ useEffect(() => {
                                         slotProps={{ legend: { labelStyle: { fontSize: 13 }, position: { vertical: 'bottom', horizontal: 'middle' }, direction: 'row' } }}
                                         barLabel={({ value }) => (value ? String(value) : '')}
                                         onItemClick={(event, d) => {
-                                            const row = materialNCData[d.dataIndex];
+                                            const row = chartMaterialData[d.dataIndex];
                                             if (row) drill('nc-scatter-bar-chart', { state: { value: row.MaterialDesc, filters: { ...filters, MaterialDesc: row.MaterialDesc }, source: 'MaterialDesc' } });
                                         }}
                                     />
