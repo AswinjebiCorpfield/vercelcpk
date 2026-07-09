@@ -8,7 +8,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import QueryStatsIcon from '@mui/icons-material/QueryStats';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
-import { metricColor } from '../../utils/metricFormat';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -22,7 +21,7 @@ import createPlotlyComponent from 'react-plotly.js/factory';
 import Plotly from 'plotly.js-dist-min';
 import { PieChart, pieArcLabelClasses } from '@mui/x-charts/PieChart';
 import * as d3 from 'd3-array';
-import CsvExportButton, { buildExportFilename } from '../CsvExportButton';
+import CsvExportButton from '../CsvExportButton';
 import { TimeSeriesContext } from '../../context/TimeSeriesContext';
 
 
@@ -109,6 +108,7 @@ function ChartBlock({
   isTimeSeries, // 新增：时间序列标志
   startMonth, // 新增：开始月份 (YYYY-MM 格式)
   endMonth, // 新增：结束月份 (YYYY-MM 格式)
+  tabToggle, // optional HRA/HRC pill rendered inside the top controls card
 }) {
   const drill = useDrilldownNavigate();
   const theme = useTheme();
@@ -124,6 +124,23 @@ function ChartBlock({
     if (s) return `${s} – …`;
     if (e) return `… – ${e}`;
     return '';
+  })();
+  // Month-level range (follows the live date slider) shown as the "Period" field in the
+  // on-screen General Information and the exported CSV. Falls back to the passed months.
+  const periodRangeDisplay = (() => {
+    const fmtMY = (d) => (d ? dayjs(d, 'MM/DD/YYYY').format('MMM YYYY') : '');
+    const fmtMonthKey = (m) => {
+      const str = String(m || '').replace('-', '');
+      if (!/^\d{6}$/.test(str)) return '';
+      const d = new Date(`${str.slice(0, 4)}-${str.slice(4, 6)}-01`);
+      return `${d.toLocaleString('en-US', { month: 'short' })} ${str.slice(0, 4)}`;
+    };
+    const s = fmtMY(dateRange[0]) || fmtMonthKey(startMonth);
+    const e = fmtMY(dateRange[1]) || fmtMonthKey(endMonth);
+    if (s && e) return `${s} – ${e}`;
+    if (s) return s;
+    if (e) return e;
+    return '-';
   })();
   // 加载期间锁定页面滚动，避免出现多余的滚动条（固定遮罩已覆盖视口）
   // 同时锁定 <html> 和 <body>：很多浏览器的视口滚动条由 documentElement 控制
@@ -843,7 +860,7 @@ function ChartBlock({
             {/* Date Range（date picker module）排在 range filter 之前：order 1 */}
             <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mt: 1, order: 1 }}>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', whiteSpace: 'nowrap', mr: 1 }}>{title}</Typography>
+                {tabToggle}
                 <TextField
                   size="small"
                   value={dateRangeDisplay}
@@ -908,10 +925,10 @@ function ChartBlock({
                   <CsvExportButton
                     data={exportData}
                     headers={popupHeaders}
-                    filename={buildExportFilename(generalInfo.MaterialDesc, title && title.includes('HRA') ? 'HRA' : title && title.includes('HRC') ? 'HRC' : 'Subsample')}
-                    sectionsAsColumns
+                    filename={`${String(generalInfo.MaterialDesc || 'Material').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim()}_Dimension Subsample Data${periodRangeDisplay && periodRangeDisplay !== '-' ? '_' + periodRangeDisplay : ''}.csv`}
                     generalInfo={[
                       { label: 'Report', value: 'Subsample Distribution — Raw Data' },
+                      { label: 'Period', value: periodRangeDisplay },
                       { label: 'Dept', value: generalInfo.Dept || '' },
                       { label: 'MachineId', value: generalInfo.MachineId || '' },
                       { label: 'MaterialDesc', value: generalInfo.MaterialDesc || '' },
@@ -1182,7 +1199,7 @@ function ChartBlock({
             />
             </Box>
             <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' } }} />
-            <Box sx={{ flexShrink: 0, width: { xs: '100%', md: 210 }, display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ flexShrink: 0, width: { xs: '100%', md: 260 }, display: 'flex', flexDirection: 'column' }}>
               <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} sx={{ mb: 1.5 }}>
                 <LocalFireDepartmentIcon sx={{ color: 'warning.main' }} />
                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
@@ -1194,7 +1211,8 @@ function ChartBlock({
                   <Typography variant="body2" textAlign="center" sx={{ mb: 0.5, fontWeight: 600 }}>
                     Carburizing Furnace (TVC)
                   </Typography>
-                  <Box sx={{ position: 'relative', width: 180, height: 180 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1.5, width: '100%' }}>
+                  <Box sx={{ position: 'relative', width: 150, height: 150, flexShrink: 0 }}>
                   <PieChart
                     series={[
                       {
@@ -1206,8 +1224,8 @@ function ChartBlock({
                         highlightScope: { faded: 'global', highlighted: 'item' },
                         cornerRadius: 6,
                         paddingAngle: 2,
-                        innerRadius: 52,
-                        outerRadius: 86,
+                        innerRadius: 44,
+                        outerRadius: 72,
                       },
                     ]}
                     sx={{
@@ -1222,8 +1240,8 @@ function ChartBlock({
                     }}
                     slotProps={{ legend: { hidden: true } }}
                     margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-                    width={180}
-                    height={180}
+                    width={150}
+                    height={150}
                     onItemClick={(event, d) => {
                       const idx = d.dataIndex;
                       const pie = furnacePieDataSorted[idx];
@@ -1241,6 +1259,29 @@ function ChartBlock({
                     </Typography>
                   </Box>
                   </Box>
+                  {furnacePieDataSorted.length > 0 && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0 }}>
+                      {furnacePieDataSorted.map((item) => {
+                        const selected = clickedFurnace?.type === 'MC2' && clickedFurnace.label === item.rawLabel;
+                        return (
+                          <Box
+                            key={item.rawLabel}
+                            onClick={() => setClickedFurnace(selected ? null : { type: 'MC2', label: item.rawLabel, color: item.color })}
+                            sx={{
+                              cursor: 'pointer', px: 1, py: 0.4, borderRadius: 1, fontSize: 13, fontWeight: 700,
+                              whiteSpace: 'nowrap', textAlign: 'center', border: `1px solid ${item.color}`,
+                              bgcolor: selected ? item.color : 'transparent',
+                              color: selected ? '#222' : item.color,
+                              '&:hover': { bgcolor: item.color, color: '#222' },
+                            }}
+                          >
+                            {item.rawLabel} ({item.value})
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  )}
+                  </Box>
                 </Box>
 
                 <Divider flexItem sx={{ width: '100%', my: 1 }} />
@@ -1249,7 +1290,8 @@ function ChartBlock({
                   <Typography variant="body2" textAlign="center" sx={{ mb: 0.5, fontWeight: 600 }}>
                     Tempering Furnace (TAT)
                   </Typography>
-                  <Box sx={{ position: 'relative', width: 180, height: 180 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1.5, width: '100%' }}>
+                  <Box sx={{ position: 'relative', width: 150, height: 150, flexShrink: 0 }}>
                   <PieChart
                     series={[
                       {
@@ -1261,8 +1303,8 @@ function ChartBlock({
                         highlightScope: { faded: 'global', highlighted: 'item' },
                         cornerRadius: 6,
                         paddingAngle: 2,
-                        innerRadius: 52,
-                        outerRadius: 86,
+                        innerRadius: 44,
+                        outerRadius: 72,
                       },
                     ]}
                     onItemClick={(event, d) => {
@@ -1287,14 +1329,37 @@ function ChartBlock({
                     }}
                     slotProps={{ legend: { hidden: true } }}
                     margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-                    width={180}
-                    height={180}
+                    width={150}
+                    height={150}
                   />
                   <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                     <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                       {temperingPieDataSorted.reduce((s, d) => s + (Number(d.value) || 0), 0) || data.length}
                     </Typography>
                   </Box>
+                  </Box>
+                  {temperingPieDataSorted.length > 0 && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0 }}>
+                      {temperingPieDataSorted.map((item) => {
+                        const selected = clickedFurnace?.type === 'MC4' && clickedFurnace.label === item.rawLabel;
+                        return (
+                          <Box
+                            key={item.rawLabel}
+                            onClick={() => setClickedFurnace(selected ? null : { type: 'MC4', label: item.rawLabel, color: item.color })}
+                            sx={{
+                              cursor: 'pointer', px: 1, py: 0.4, borderRadius: 1, fontSize: 13, fontWeight: 700,
+                              whiteSpace: 'nowrap', textAlign: 'center', border: `1px solid ${item.color}`,
+                              bgcolor: selected ? item.color : 'transparent',
+                              color: selected ? '#222' : item.color,
+                              '&:hover': { bgcolor: item.color, color: '#222' },
+                            }}
+                          >
+                            {item.rawLabel} ({item.value})
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  )}
                   </Box>
                 </Box>
               </Stack>
@@ -1326,6 +1391,18 @@ function ChartBlock({
             </Stack>
             <Box sx={{ width: '100%' }} />
             <Grid container spacing={1}>
+              <Grid container item xs={12} alignItems="top">
+                <Grid item xs={4}>
+                  <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>
+                    Period:
+                  </Typography>
+                </Grid>
+                <Grid item xs={8}>
+                  <Typography variant="body1" sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: 15, wordBreak: 'break-word' }}>
+                    {periodRangeDisplay}
+                  </Typography>
+                </Grid>
+              </Grid>
               <Grid container item xs={12} alignItems="top">
                 <Grid item xs={5}>
                   <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>
@@ -1397,80 +1474,43 @@ function ChartBlock({
               </Typography>
             </Stack>
             <Box sx={{ width: '100%'}} />
-            <Grid container spacing={1.5}>
-              {[
-                { label: 'No of Data:', value: statisticsToShow.Count ?? data.length ?? '-' },
-                { label: 'Mean:', value: statisticsToShow.MeanValue !== undefined ? statisticsToShow.MeanValue : '-' },
-                { label: 'Std Dev:', value: statisticsToShow.StdValue !== undefined ? Number(statisticsToShow.StdValue).toFixed(3) : '-' },
-                { label: 'LSL:', value: LSL !== null ? LSL : '-' },
-                { label: 'USL:', value: USL !== null ? USL : '-' },
-                { label: 'PP:', value: statisticsToShow.PPValue !== undefined ? statisticsToShow.PPValue : '-', color: metricColor(statisticsToShow.PPValue) },
-              ].map((s) => (
-                <Grid item xs={4} key={s.label}>
-                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, textAlign: 'center', bgcolor: 'action.hover', height: '100%' }}>
-                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary', fontWeight: 600 }}>{s.label}</Typography>
-                    <Typography sx={{ fontSize: 22, fontWeight: 'bold', mt: 0.25, color: s.color }}>{s.value}</Typography>
+            <Box>
+              {(() => {
+                // Row-style Statistics matching the other drill-in pages: label left,
+                // right-aligned bold value with dividers. Pp/Ppk green above 0.9949,
+                // red at/below; Target and the rest use the default colour.
+                const MAX_NC = 0.9949;
+                const statColor = (v) => (v == null || v === '-' || isNaN(v)) ? undefined : (Number(v) <= MAX_NC ? '#F54D41' : 'success.main');
+                const lslN = Number(LSL), uslN = Number(USL);
+                const hasSpec = LSL !== null && USL !== null && Number.isFinite(lslN) && Number.isFinite(uslN);
+                const fields = [
+                  { label: 'No of Data', value: statisticsToShow.Count ?? data.length ?? '-' },
+                  { label: 'Mean', value: statisticsToShow.MeanValue !== undefined ? statisticsToShow.MeanValue : '-' },
+                  { label: 'Std Dev', value: statisticsToShow.StdValue !== undefined ? Number(statisticsToShow.StdValue).toFixed(3) : '-' },
+                  { label: 'LSL', value: LSL !== null ? LSL : '-' },
+                  { label: 'USL', value: USL !== null ? USL : '-' },
+                  { label: 'Target', value: hasSpec ? (lslN + uslN) / 2 : '-' },
+                  { label: 'CPK', value: statisticsToShow.CPKValue !== undefined ? statisticsToShow.CPKValue : '-', color: statColor(statisticsToShow.CPKValue) },
+                  { label: 'PPK', value: statisticsToShow.PPKValue !== undefined ? statisticsToShow.PPKValue : '-', color: statColor(statisticsToShow.PPKValue) },
+                  { label: 'CP', value: statisticsToShow.CPValue !== undefined ? statisticsToShow.CPValue : '-', color: statColor(statisticsToShow.CPValue) },
+                  { label: 'PP', value: statisticsToShow.PPValue !== undefined ? statisticsToShow.PPValue : '-', color: statColor(statisticsToShow.PPValue) },
+                  first?.CarbonizingFurnaceSummary && {
+                    label: 'Carbonizing Furnace Summary',
+                    value: Array.isArray(first.CarbonizingFurnaceSummary) ? first.CarbonizingFurnaceSummary.map(f => `${f.Furnace}: ${f.Count}`).join(', ') : '-',
+                  },
+                  first?.TemperingFurnaceSummary && {
+                    label: 'Tempering Furnace Summary',
+                    value: Array.isArray(first.TemperingFurnaceSummary) ? first.TemperingFurnaceSummary.map(f => `${f.Furnace}: ${f.Count}`).join(', ') : '-',
+                  },
+                ].filter(Boolean);
+                return fields.map((s, i, arr) => (
+                  <Box key={s.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.9, borderBottom: i < arr.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
+                    <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>{s.label}:</Typography>
+                    <Typography sx={{ ml: 'auto', fontWeight: 'bold', fontSize: 14, textAlign: 'right', wordBreak: 'break-word', color: s.color || 'text.primary' }}>{s.value}</Typography>
                   </Box>
-                </Grid>
-              ))}
-              <Grid item xs={12}>
-                {(() => {
-                  const v = Number(statisticsToShow.PPKValue);
-                  const has = statisticsToShow.PPKValue !== undefined && statisticsToShow.PPKValue !== null && !isNaN(v);
-                  const status = !has
-                    ? { c: 'text.secondary', tint: 'action.hover', label: '' }
-                    : v >= 1.33
-                      ? { c: 'success.main', tint: 'rgba(46,125,50,0.12)', label: 'On Target (≥ 1.33)' }
-                      : v >= 1.0
-                        ? { c: 'warning.main', tint: 'rgba(237,108,2,0.14)', label: 'Marginal (1.00 – 1.33)' }
-                        : { c: 'error.main', tint: 'rgba(211,47,47,0.12)', label: 'Below Target (< 1.00)' };
-                  return (
-                    <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5, textAlign: 'center', bgcolor: 'action.hover' }}>
-                      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', fontWeight: 600 }}>PPK:</Typography>
-                      <Typography sx={{ fontSize: 28, fontWeight: 'bold', color: status.c }}>{has ? statisticsToShow.PPKValue : '-'}</Typography>
-                      {status.label && (
-                        <Box sx={{ display: 'inline-block', mt: 0.75, px: 1.5, py: 0.25, borderRadius: 5, bgcolor: status.tint, color: status.c, fontSize: 12, fontWeight: 700 }}>
-                          {status.label}
-                        </Box>
-                      )}
-                    </Box>
-                  );
-                })()}
-              </Grid>
-              {/* 炉次 summary 展示：MC2 & MC4 都展示 */}
-              {first?.CarbonizingFurnaceSummary && (
-                <Grid container item xs={12} alignItems="top">
-                  <Grid item xs={6}>
-                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>
-                      Carbonizing Furnace Summary:
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="h6" sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: 16 }}>
-                      {Array.isArray(first.CarbonizingFurnaceSummary)
-                        ? first.CarbonizingFurnaceSummary.map(f => `${f.Furnace}: ${f.Count}`).join(', ')
-                        : '-'}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              )}
-              {first?.TemperingFurnaceSummary && (
-                <Grid container item xs={12} alignItems="top">
-                  <Grid item xs={6}>
-                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'normal', fontSize: 15 }}>
-                      Tempering Furnace Summary:
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="h6" sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: 16 }}>
-                      {Array.isArray(first.TemperingFurnaceSummary)
-                        ? first.TemperingFurnaceSummary.map(f => `${f.Furnace}: ${f.Count}`).join(', ')
-                        : '-'}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              )}
-            </Grid>
+                ));
+              })()}
+            </Box>
           </Box>
         </Grid>
 
@@ -1547,6 +1587,8 @@ const NCSubsampleScatterBarChart = () => {
   ]);
   const [hoveredX, setHoveredX] = useState(null);
   const [clickedFurnace, setClickedFurnace] = useState(null);
+  // When both HRA and HRC data exist they are shown as two tabs instead of stacked.
+  const [hardnessTab, setHardnessTab] = useState('HRA');
 
   useEffect(() => {
     setDateRange([
@@ -1606,6 +1648,14 @@ const NCSubsampleScatterBarChart = () => {
 
     const fetchData = async () => {
       setLoading(true);
+      // TEMP (design preview only): synthesize dummy HRA rows from HRC so the
+      // "HRA Scatter Distribution" block renders for review. REMOVE this helper and
+      // its two call sites (marked "TEMP dummy HRA") once the HRA design is confirmed.
+      const makeDummyHra = (arr) => (Array.isArray(arr) ? arr : []).map((row, i) => ({
+        ...row,
+        DimensionDesc: String(row.DimensionDesc || 'Temper Hardness HRC 53~59').replace(/HRC/gi, 'HRA'),
+        LotNo: `${row.LotNo || 'LOT'}_HRA${i + 1}`,
+      }));
       try {
         const response = await axios.get(`${window.baseURL}/subsamples/nc-all`, {
           params: {
@@ -1631,9 +1681,10 @@ const NCSubsampleScatterBarChart = () => {
         console.log('Fetched Statistics Value:', statisticsValue);
 
         if (hra || hrc) {
-          setHraData(hra || []);
+          const hraArr = (hra && hra.length > 0) ? hra : makeDummyHra(hrc || []); // TEMP dummy HRA
+          setHraData(hraArr);
           setHrcData(hrc || []);
-          setAllData([...(hra || []), ...(hrc || [])]);
+          setAllData([...hraArr, ...(hrc || [])]);
           setHraSummary(hraSummary);
           setHrcSummary(hrcSummary);
           setInitialStatisticsValue(statisticsValue);
@@ -1642,7 +1693,7 @@ const NCSubsampleScatterBarChart = () => {
           // 自动分割 HRA 和 HRC 数据给饼图使用
           const respHraData = resp.filter(item => item.DimensionDesc && item.DimensionDesc.includes('HRA'));
           const respHrcData = resp.filter(item => item.DimensionDesc && item.DimensionDesc.includes('HRC'));
-          setHraData(respHraData.length > 0 ? respHraData : []);
+          setHraData(respHraData.length > 0 ? respHraData : makeDummyHra(respHrcData)); // TEMP dummy HRA
           setHrcData(respHrcData.length > 0 ? respHrcData : []);
           setHraSummary(null);
           setHrcSummary(null);
@@ -1681,12 +1732,28 @@ const NCSubsampleScatterBarChart = () => {
   const showDouble = hraData.length > 0 && hrcData.length > 0;
 
   if (showDouble) {
-    // 移除 scale 样式，保证内容宽度100%，自适应父容器
+    // Segmented HRA/HRC pill, rendered inside each block's top controls card (left side).
+    const hardnessToggle = (
+      <Box sx={{ display: 'inline-flex', p: '3px', borderRadius: 999, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}>
+        {['HRA', 'HRC'].map((val) => (
+          <Box
+            key={val}
+            onClick={() => setHardnessTab(val)}
+            sx={{
+              px: 3, py: 0.6, borderRadius: 999, cursor: 'pointer', fontSize: 13, fontWeight: 700, letterSpacing: 0.5,
+              bgcolor: hardnessTab === val ? 'primary.main' : 'transparent',
+              color: hardnessTab === val ? '#fff' : 'text.secondary',
+              transition: 'all .15s',
+            }}
+          >
+            {val}
+          </Box>
+        ))}
+      </Box>
+    );
     return (
-      <Box sx={{ width: '100%' }}>
-          <Typography variant="h4" gutterBottom sx={{ mt: 2, mb: 0, fontWeight: 'bold' }}>
-            Subsample Scatter Distribution
-          </Typography>
+      <Box sx={{ width: '100%', mt: 2 }}>
+        {hardnessTab === 'HRA' ? (
         <ChartBlock
           data={hraData}
           title="HRA Scatter Distribution"
@@ -1714,7 +1781,9 @@ const NCSubsampleScatterBarChart = () => {
           isTimeSeries={isTimeSeries}
           startMonth={requestedStartMonth}
           endMonth={requestedEndMonth}
+          tabToggle={hardnessToggle}
         />
+        ) : (
         <ChartBlock
           data={hrcData}
           title="HRC Scatter Distribution"
@@ -1737,12 +1806,14 @@ const NCSubsampleScatterBarChart = () => {
           hraSummary={hraSummary}
           hrcSummary={hrcSummary}
           initialStatisticsValue={initialStatisticsValue}
-          showGlobalControls={false}
+          showGlobalControls={true}
           allDataForGlobalRange={hrcData}
           isTimeSeries={isTimeSeries}
           startMonth={requestedStartMonth}
           endMonth={requestedEndMonth}
+          tabToggle={hardnessToggle}
         />
+        )}
       </Box>
     );
   } else {

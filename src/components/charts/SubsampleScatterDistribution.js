@@ -22,7 +22,7 @@ import createPlotlyComponent from 'react-plotly.js/factory';
 import Plotly from 'plotly.js-dist-min';
 import { PieChart } from '@mui/x-charts/PieChart';
 import * as d3 from 'd3-array';
-import CsvExportButton, { buildExportFilename } from '../CsvExportButton';
+import CsvExportButton from '../CsvExportButton';
 import LotCPKBarChart from './LotCPKBarChart';
 import { TimeSeriesContext } from '../../context/TimeSeriesContext';
 
@@ -853,6 +853,18 @@ const SubsampleScatterDistribution = () => {
   const periodRangeLabel = (requestedStartMonth && requestedEndMonth)
     ? `${fmtMonthLabel(requestedStartMonth)} – ${fmtMonthLabel(requestedEndMonth)}`
     : (requestedStartMonth ? fmtMonthLabel(requestedStartMonth) : '-');
+  // Month-level range that follows the live date slider (the download data is filtered
+  // by dateRange). Drives the exported filename, the exported "Period" field, and the
+  // on-screen General Information Period so all three match the actually-shown data.
+  const fmtMonthFromMDY = (d) => (d ? dayjs(d, 'MM/DD/YYYY').format('MMM YYYY') : '');
+  const periodRangeDisplay = (() => {
+    const s = fmtMonthFromMDY(dateRange[0]);
+    const e = fmtMonthFromMDY(dateRange[1]);
+    if (s && e) return `${s} – ${e}`;
+    if (s) return s;
+    if (e) return e;
+    return periodRangeLabel;
+  })();
   const _lslNum = Number(allData[0]?.LSL);
   const _uslNum = Number(allData[0]?.USL);
   const targetValue = (Number.isFinite(_lslNum) && Number.isFinite(_uslNum) && _lslNum > -999 && _uslNum < 999)
@@ -943,9 +955,10 @@ const SubsampleScatterDistribution = () => {
       <CsvExportButton
         data={downloadDataRows}
         headers={downloadColumns}
-        filename={buildExportFilename(selectedData?.MaterialDesc, 'Subsample_Scatter')}
+        filename={`Historical Dimension Subsample Data${periodRangeDisplay && periodRangeDisplay !== '-' ? '_' + periodRangeDisplay : ''}.csv`}
         generalInfo={[
           { label: 'Report', value: 'Subsample Distribution — Raw Data' },
+          { label: 'Period', value: periodRangeDisplay },
           { label: 'Dept', value: selectedData?.Dept || '' },
           { label: 'MachineId', value: selectedData?.MachineId || '' },
           { label: 'MaterialDesc', value: selectedData?.MaterialDesc || '' },
@@ -1391,7 +1404,7 @@ const SubsampleScatterDistribution = () => {
             // narrower label column (xs=3/9 instead of 5/7).
             <Grid container spacing={1}>
               {[
-                { label: 'Period', value: periodRangeLabel },
+                { label: 'Period', value: periodRangeDisplay },
                 { label: 'Dept', value: selectedData?.Dept ?? '-' },
                 { label: 'MachineId', value: selectedData?.MachineId ?? '-' },
                 { label: 'MaterialDesc', value: selectedData?.MaterialDesc ?? '-', long: true },
@@ -1415,7 +1428,7 @@ const SubsampleScatterDistribution = () => {
                 { label: 'Dept', value: selectedData?.Dept ?? '-' },
                 { label: 'MachineId', value: selectedData?.MachineId ?? '-' },
                 { label: 'CAT', value: selectedData?.CAT ?? '-' },
-                { label: 'Period', value: periodRangeLabel },
+                { label: 'Period', value: periodRangeDisplay },
                 { label: 'MaterialDesc', value: selectedData?.MaterialDesc ?? '-', full: true },
                 { label: 'DimensionDesc', value: selectedData?.DimensionDesc ?? '-', full: true },
               ].map((f) => (

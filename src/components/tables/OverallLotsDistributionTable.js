@@ -3,7 +3,6 @@ import { Navigate, useLocation } from 'react-router-dom';
 import TableSortLabel from '@mui/material/TableSortLabel';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, CircularProgress, circularProgressClasses, useTheme, TextField, InputAdornment, TablePagination } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import DownloadIcon from '@mui/icons-material/Download';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import axios from 'axios';
@@ -306,11 +305,17 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
     }
   };
 
-  // Search (by LotNo) + column sort applied on top of the pie-filtered data.
+  // Search (across all displayed columns, incl. furnace codes like TVC/TAT) +
+  // column sort applied on top of the pie-filtered data.
   const displayLotData = React.useMemo(() => {
     let data = filteredLotData;
     const q = search.trim().toLowerCase();
-    if (q) data = data.filter(item => String(item.LotNo || '').toLowerCase().includes(q));
+    if (q) {
+      data = data.filter(item =>
+        ['LotNo', 'MeasDate', 'NO_OF_DATA', 'CarbonizingFurnace', 'TemperingFurnace', 'CPK', 'CP']
+          .some(k => String(item[k] ?? '').toLowerCase().includes(q))
+      );
+    }
     if (orderBy) {
       const numeric = ['NO_OF_DATA', 'CPK', 'CP'];
       data = [...data].sort((a, b) => {
@@ -924,10 +929,10 @@ const OverallLotsDistributionTable = () => {
   const location = useLocation();
   // const navigate = useNavigate();
   // This page is shared by all four modules; hierarchical URLs record the origin
-  // in the first path segment. Historical Dimension / Key Focus keep the original
-  // row-style General Information; Individual / Dimension use the stat-tile grid.
+  // in the first path segment. All modules now use the row-style General Information
+  // + Statistics layout (icon · label: · right-aligned value with dividers).
   const originModule = '/' + ((location?.pathname || '').split('/').filter(Boolean)[0] || '');
-  const legacyGeneralInfo = originModule === '/lots-historical-summary' || originModule === '/nc-lot-bar';
+  const legacyGeneralInfo = originModule === '/lots-historical-summary' || originModule === '/nc-lot-bar' || originModule === '/lot-cpk-bar' || originModule === '/lots-cpk-ppk-bar';
   const { state } = location || {};
   console.log('OverallLotsDistributionTable state', state);
   const { row } = state || {};
@@ -1281,17 +1286,20 @@ const OverallLotsDistributionTable = () => {
                 {loading || filteredTableData.length === 0 ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 120 }}><CircularProgress /></Box>
                 ) : (() => {
+                  // Cp/Cpk/Pp/Ppk: red when at/below the 0.9949 threshold, green when above.
+                  // Non-numeric ('-'/NaN) stays the default text colour.
+                  const metricColor = (v) => (v == null || isNaN(v)) ? undefined : (Number(v) <= MAX_NC ? '#F54D41' : 'success.main');
                   const statsFields = [
                     { label: 'Mean', value: metrics?.MeanValue ?? '-' },
                     { label: 'Std Dev', value: metrics?.StdValue ?? '-' },
                     { label: 'No of Data', value: (pieFilter.CarbonizingFurnace || pieFilter.TemperingFurnace) ? validFilteredTableData.length : (row?.NO_OF_DATA ?? '-') },
                     { label: 'LSL', value: statsLSLDisplay },
                     { label: 'USL', value: statsUSLDisplay },
-                    { label: 'Target', value: (isVisibleLSL(statsLSLParsed) && isVisibleUSL(statsUSLParsed)) ? ((statsLSLParsed + statsUSLParsed) / 2) : '-', color: 'success.main' },
-                    { label: 'CPK', value: (metrics?.CPKValue != null && !isNaN(metrics?.CPKValue)) ? Number(metrics.CPKValue).toFixed(3) : (metrics?.CPKValue ?? '-'), color: metrics?.CPKValue != null && Number(metrics?.CPKValue) <= MAX_NC ? '#F54D41' : undefined },
-                    ...(displayPP ? [{ label: 'PPK', value: (metrics?.PPKValue != null && !isNaN(metrics?.PPKValue)) ? Number(metrics.PPKValue).toFixed(3) : (metrics?.PPKValue ?? '-'), color: metrics?.PPKValue != null && Number(metrics?.PPKValue) <= MAX_NC ? '#F54D41' : undefined }] : []),
-                    { label: 'CP', value: (metrics?.CPValue != null && !isNaN(metrics?.CPValue)) ? Number(metrics.CPValue).toFixed(3) : (metrics?.CPValue ?? '-'), color: metrics?.CPValue != null && Number(metrics?.CPValue) <= MAX_NC ? '#F54D41' : undefined },
-                    ...(displayPP ? [{ label: 'PP', value: (metrics?.PPValue != null && !isNaN(metrics?.PPValue)) ? Number(metrics.PPValue).toFixed(3) : (metrics?.PPValue ?? '-'), color: metrics?.PPValue != null && Number(metrics?.PPValue) <= MAX_NC ? '#F54D41' : undefined }] : []),
+                    { label: 'Target', value: (isVisibleLSL(statsLSLParsed) && isVisibleUSL(statsUSLParsed)) ? ((statsLSLParsed + statsUSLParsed) / 2) : '-' },
+                    { label: 'CPK', value: (metrics?.CPKValue != null && !isNaN(metrics?.CPKValue)) ? Number(metrics.CPKValue).toFixed(3) : (metrics?.CPKValue ?? '-'), color: metricColor(metrics?.CPKValue) },
+                    ...(displayPP ? [{ label: 'PPK', value: (metrics?.PPKValue != null && !isNaN(metrics?.PPKValue)) ? Number(metrics.PPKValue).toFixed(3) : (metrics?.PPKValue ?? '-'), color: metricColor(metrics?.PPKValue) }] : []),
+                    { label: 'CP', value: (metrics?.CPValue != null && !isNaN(metrics?.CPValue)) ? Number(metrics.CPValue).toFixed(3) : (metrics?.CPValue ?? '-'), color: metricColor(metrics?.CPValue) },
+                    ...(displayPP ? [{ label: 'PP', value: (metrics?.PPValue != null && !isNaN(metrics?.PPValue)) ? Number(metrics.PPValue).toFixed(3) : (metrics?.PPValue ?? '-'), color: metricColor(metrics?.PPValue) }] : []),
                   ];
                   return legacyGeneralInfo ? (
                     // Historical Dimension / Key Focus: Statistics follows the General
@@ -1381,7 +1389,6 @@ const OverallLotsDistributionTable = () => {
               sx={{ flexShrink: 0, px: 1.5, height: 34, whiteSpace: 'nowrap', textTransform: 'none' }}
               title="Download Subsample Data"
             >
-              <DownloadIcon fontSize="small" sx={{ mr: 0.5 }} />
               Download Subsample Data
             </CsvExportButton>
             <TextField

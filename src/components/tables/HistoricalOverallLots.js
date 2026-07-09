@@ -31,7 +31,6 @@ import {
   Chip,
   Badge
 } from '@mui/material';
-import DownloadIcon from '@mui/icons-material/Download';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
@@ -693,7 +692,6 @@ const MonthlyHistoricalOverallLots = () => {
                   })()}
                   sx={{ px: 1.5, height: 36, textTransform: 'none', whiteSpace: 'nowrap', color: 'text.secondary', borderColor: 'divider' }}
                 >
-                  <DownloadIcon fontSize="small" style={{ marginRight: 6 }} />
                   Export
                 </CsvExportButton>
               </span>
@@ -1013,14 +1011,11 @@ const MonthlyHistoricalOverallLots = () => {
                                 backgroundColor: !isDash && Number(value) < 0.9949 ? '#F54D41' : undefined, // 不在范围内的cell背景变红
                               }}
                               onClick={isDash ? undefined : () => {
-                                const recent12 = getRecent12Months();
                                 drill('lots-sample-distribution-table', {
                                   state: {
+                                    // Clicking a single month cell drills into that one month only,
+                                    // so the drill-in Period label shows just that month (not the range).
                                     Period: col,
-                                    // Effective historical range (matches the visible month columns) →
-                                    // shown as the Period label on the drill-in.
-                                    periodStart: filters.StartMonth || recent12[0],
-                                    periodEnd: filters.EndMonth || recent12[recent12.length - 1],
                                     stats: value,
                                     row: row,
                                   },

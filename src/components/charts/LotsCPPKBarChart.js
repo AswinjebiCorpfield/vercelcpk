@@ -652,9 +652,15 @@ useEffect(() => {
                         // BRD G4: responsive width — fills the container (parent scrolls on narrow screens).
                         <BarChart
                           height={500}
-                          sx={{
+                          sx={(theme) => ({
                             marginTop: 2,
-                          }}
+                            "& .MuiChartsAxis-directionY .MuiChartsAxis-label": {
+                              fill: `${theme.palette.mode === 'dark' ? '#fff' : theme.palette.text.primary} !important`,
+                            },
+                            "& .MuiChartsAxis-directionY .MuiChartsAxis-tickLabel": {
+                              fill: `${theme.palette.mode === 'dark' ? '#fff' : theme.palette.text.primary} !important`,
+                            },
+                          })}
                           margin={showAllTicks ? { left: 80, right: 50, top: 75, bottom: 130 } : { left: 80, right: 50, top: 55, bottom: 110 }}
                           series={[
                             {

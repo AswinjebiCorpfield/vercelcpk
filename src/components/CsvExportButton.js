@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
 import dayjs from 'dayjs';
 
 const escapeCsvField = (field) => {
@@ -31,20 +32,22 @@ export const buildExportFilename = (materialDesc, period, fallback = 'PCM_Export
 // of the exported file. `generalInfo` is an array of { label, value } pairs.
 // `headerLabels` optionally maps a column key to a friendly display label for the
 // CSV header row only — data is still looked up by the original key.
-const CsvExportButton = ({ data, headers, filename = 'data.csv', generalInfo, statistics, headerLabels, sectionsAsColumns = false, sx, children, variant = 'outlined' }) => {
+const CsvExportButton = ({ data, headers, filename = 'data.csv', generalInfo, statistics, headerLabels, sectionsAsColumns = false, sx, children, variant = 'outlined', startIcon = <DownloadIcon fontSize="small" /> }) => {
   const handleExport = () => {
     if (!data || !data.length || !headers || !headers.length) return;
 
     const lines = [];
 
-    // Excel right-aligns any cell it parses as a number. Prefixing a numeric value
-    // with a space (in a quoted field) makes Excel keep it as text, so the Statistics
-    // values left-align to match the (text) General Information block. Non-numeric
-    // values (e.g. "*", "-", dates) are already left-aligned and pass through.
+    // Spreadsheets right-align any cell they parse as a number. To keep the Statistics
+    // values left-aligned (matching the text General Information block) in BOTH Excel and
+    // Google Sheets, emit numeric values as the ="20" formula-text form — both apps
+    // evaluate it to the left-aligned text "20". (A leading-space trick only works in
+    // Excel; Google Sheets trims it and re-parses as a number.) Non-numeric values
+    // (e.g. "*", "-", dates) are already left-aligned and pass through unchanged.
     const leftAlignCell = (value) => {
       const s = String(value ?? '');
       if (s !== '' && !isNaN(s) && isFinite(Number(s))) {
-        return `" ${s.replace(/"/g, '""')}"`;
+        return `"=""${s.replace(/"/g, '""')}"""`;
       }
       return escapeCsvField(value);
     };
@@ -103,7 +106,7 @@ const CsvExportButton = ({ data, headers, filename = 'data.csv', generalInfo, st
   };
 
   return (
-    <Button variant={variant} sx={sx} onClick={handleExport}>
+    <Button variant={variant} sx={sx} onClick={handleExport} startIcon={startIcon}>
       {children || 'Download Data'}
     </Button>
   );

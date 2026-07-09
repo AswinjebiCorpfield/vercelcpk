@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { BarChart } from '@mui/x-charts/BarChart';
 import axios from 'axios';
-import { Box, Card, CardContent, CircularProgress, Grid, Typography, TextField, Button, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, TableSortLabel, InputAdornment, Tooltip, IconButton } from '@mui/material';
+import { Box, Card, CardContent, CircularProgress, Grid, Typography, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, TableSortLabel, InputAdornment, Tooltip } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -9,6 +9,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import Autocomplete from '@mui/material/Autocomplete';
 import './NCLotRankBar.css';
 import { useValue } from '../../context/ContextProvider';
+import { useNavigate } from 'react-router-dom';
 import useDrilldownNavigate from '../../utils/useDrilldownNavigate';
 
 function formatMonthYear(monthStr) {
@@ -93,6 +94,7 @@ const materialSortValue = (row, field) => {
 
 const NCLotRankBar = () => {
     const drill = useDrilldownNavigate();
+    const navigate = useNavigate();
     const [machineNCData, setMachineNCData] = useState([]);
     const [materialNCData, setMaterialNCData] = useState([]);
     const [page, setPage] = useState(0);
@@ -103,6 +105,13 @@ const NCLotRankBar = () => {
     // Key Focus chart: how many materials to plot. Numbers = Top-N by Ppk<1 count;
     // 'random' = 30 randomly sampled from the (already filter-applied) material list.
     const [topN, setTopN] = useState(10);
+    // KF1: how many top-ranked materials to show (applies to both the chart and the
+    // table). User-entered value clamped to 1–30; falls back to 10 (the default) when
+    // the field is blank or invalid.
+    const effectiveTopN = (() => {
+        const n = Math.floor(Number(topN));
+        return (!Number.isFinite(n) || n < 1) ? 10 : Math.min(30, n);
+    })();
     useEffect(() => { setPage(0); }, [materialNCData]);
     const [tvcNCData, setTvcNCData] = useState([]);
     const [tatNCData, setTatNCData] = useState([]);
@@ -214,7 +223,8 @@ useEffect(() => {
   // Material summary: search filter + column sort applied before pagination.
   const processedMaterialData = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let rows = materialNCData;
+    // Table mirrors the chart's Top-N selection (materialNCData is rank-ordered).
+    let rows = materialNCData.slice(0, effectiveTopN);
     if (q) {
       rows = rows.filter(r => {
         const tvc = (r.CarburizingFurnace || '').toLowerCase();
@@ -233,7 +243,7 @@ useEffect(() => {
       return 0;
     });
     return sorted;
-  }, [materialNCData, search, order, orderBy]);
+  }, [materialNCData, effectiveTopN, search, order, orderBy]);
 
   const handleSort = (field) => {
     if (!field) return;
@@ -347,21 +357,12 @@ useEffect(() => {
         fetchData();
     }, [filters]);
 
-    // Key Focus ranking data: Top-N materials by Ppk<1 Individual Lot count, or a
-    // random sample of 30. materialNCData is already filter-applied (API query),
-    // so both modes honour the active filters. Recomputed only when the source data
-    // or the selection changes, so the random pick stays stable across re-renders.
+    // Key Focus ranking data: the user-selected Top-N materials by Ppk<1 Individual
+    // Lot count (1–30, default 10). materialNCData is already filter-applied (API
+    // query) and rank-ordered, so slicing honours the active filters.
     const chartMaterialData = useMemo(() => {
-        if (topN === 'random') {
-            const arr = [...materialNCData];
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-            return arr.slice(0, 30);
-        }
-        return materialNCData.slice(0, topN);
-    }, [materialNCData, topN]);
+        return materialNCData.slice(0, effectiveTopN);
+    }, [materialNCData, effectiveTopN]);
 
     const materialPpkLessThanOneCountList = materialNCData.map(item => item.PPK_NC_Count);
     const isMaterialAllZero = materialPpkLessThanOneCountList.length > 0 && materialPpkLessThanOneCountList.every(v => v === 0);
@@ -497,12 +498,15 @@ useEffect(() => {
                     renderTags={() => null}
                 />
                     <Tooltip title="Clear all filters">
-                        <IconButton
+                        <Button
+                            variant="outlined"
+                            size="small"
                             onClick={handleClearFilters}
-                            sx={{ ml: 'auto', alignSelf: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, color: 'text.secondary', '&:hover': { color: 'error.main', borderColor: 'error.main' } }}
+                            startIcon={<FilterAltOffIcon fontSize="small" />}
+                            sx={{ ml: 'auto', alignSelf: 'center', fontSize: 12.5, fontWeight: 700, textTransform: 'none' }}
                         >
-                            <FilterAltOffIcon fontSize="small" />
-                        </IconButton>
+                            Clear
+                        </Button>
                     </Tooltip>
                 </Box>
             </Grid>
@@ -527,27 +531,26 @@ useEffect(() => {
                             <Card sx={{ p: 3, mb: 3, backgroundColor: 'background.paper' }}>
                                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.5 }}>
                                     <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                                        {topN === 'random'
-                                            ? 'Random 30 Material Description'
-                                            : `Top ${topN} Material Description`} — Ranked by Ppk &lt; 1 Individual Lot Count
+                                        {`Top ${effectiveTopN} Material Description`} — Ranked by Ppk &lt; 1 Individual Lot Count
                                     </Typography>
                                     <TextField
-                                        select
+                                        type="number"
                                         size="small"
-                                        label="Show"
+                                        label="Show Top"
                                         value={topN}
                                         onChange={(e) => {
-                                            const v = e.target.value;
-                                            setTopN(v === 'random' ? 'random' : Number(v));
+                                            const raw = e.target.value;
+                                            if (raw === '') { setTopN(''); return; }
+                                            const n = Math.floor(Number(raw));
+                                            if (!Number.isFinite(n)) return;
+                                            setTopN(Math.max(1, Math.min(30, n)));
                                         }}
+                                        onBlur={() => { if (topN === '' || !Number.isFinite(Number(topN)) || Number(topN) < 1) setTopN(10); }}
+                                        inputProps={{ min: 1, max: 30, step: 1 }}
+                                        helperText="1 – 30 (default 10)"
                                         sx={{ minWidth: 130 }}
                                         InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
-                                    >
-                                        <MenuItem value={10}>Top 10</MenuItem>
-                                        <MenuItem value={20}>Top 20</MenuItem>
-                                        <MenuItem value={30}>Top 30</MenuItem>
-                                        <MenuItem value={'random'}>Random 30</MenuItem>
-                                    </TextField>
+                                    />
                                 </Box>
                                 <Typography variant="body2" sx={{ color: 'primary.main', fontStyle: 'italic', mb: 2, letterSpacing: 0.3 }}>
                                     ⓘ Important Note: Click a bar — or the action buttons in the summary below — to drill into the analysis.
@@ -570,7 +573,7 @@ useEffect(() => {
                                             id: 'kfPpkLt1',
                                             color: '#26C6DA',
                                         }]}
-                                        slotProps={{ legend: { labelStyle: { fontSize: 13 }, position: { vertical: 'bottom', horizontal: 'middle' }, direction: 'row' } }}
+                                        slotProps={{ legend: { hidden: true } }}
                                         barLabel={({ value }) => (value ? String(value) : '')}
                                         onItemClick={(event, d) => {
                                             const row = chartMaterialData[d.dataIndex];
@@ -639,13 +642,18 @@ useEffect(() => {
                                                             {Number.isFinite(pct) ? pct.toFixed(2) : row.PPK_NC_Percentage}%
                                                         </TableCell>
                                                         <TableCell>
-                                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
-                                                                <Button size="small" startIcon={<AssessmentIcon />} variant="contained" color="primary" sx={{ color: 'darkblue', textTransform: 'none' }}
+                                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'stretch' }}>
+                                                                <Button size="small" startIcon={<AssessmentIcon />} variant="contained" color="primary" sx={{ color: 'darkblue', textTransform: 'none', justifyContent: 'flex-start' }}
                                                                     onClick={() => drill('nc-scatter-bar-chart', { state: { value: row.MaterialDesc, filters: { ...filters, MaterialDesc: row.MaterialDesc }, source: 'MaterialDesc' } })}>
                                                                     HRA / HRC
                                                                 </Button>
-                                                                <Button size="small" startIcon={<HistoryIcon />} variant="contained" color="info" sx={{ textTransform: 'none' }}
-                                                                    onClick={() => drill('overall-lots-clicked-table', { state: { ...filters, MaterialDesc: row.MaterialDesc, datatype: 'MaterialDesc' } })}>
+                                                                <Button size="small" startIcon={<HistoryIcon />} variant="contained" color="info" sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+                                                                    onClick={() => {
+                                                                        // Historical Dimension view for this material: set the material
+                                                                        // filter in the shared context, then open the module page.
+                                                                        dispatch({ type: 'UPDATE_FILTERS', payload: { ...filters, MaterialDesc: row.MaterialDesc } });
+                                                                        navigate('/lots-historical-summary');
+                                                                    }}>
                                                                     Historical
                                                                 </Button>
                                                             </Box>

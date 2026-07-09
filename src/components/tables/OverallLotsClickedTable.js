@@ -722,7 +722,7 @@ const OverallLotsClickedTable = () => {
                             BatchMC2: 'Carburizing Furnace',
                             BatchMC4: 'Tempering Furnace',
                         }}
-                        filename={`${metric === 'PPK' ? 'Ppk' : 'Cpk'}${resultType === 'ac' ? '≥1' : '<1'} Dimension Measurement Table_${formatMonthYear(date) || 'Export'}.csv`}
+                        filename={`${metric === 'PPK' ? 'Ppk' : 'Cpk'}${resultType === 'ac' ? '≥1' : '＜1'} Dimension Measurement Table_${formatMonthYear(date) || 'Export'}.csv`}
                         generalInfo={[
                             { label: 'Report', value: 'Dimension Measurement Table' },
                             { label: 'Period', value: formatMonthYear(date) },

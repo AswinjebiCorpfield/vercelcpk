@@ -758,7 +758,7 @@ const IndividualLotClickedTable = () => {
                     <CsvExportButton
                         data={pieFilteredData}
                         headers={columns.filter(col => col.id !== 'FurtherAnalysis').map(col => col.id)}
-                        filename={`${seriesId.slice(0, 2) === 'nc' ? 'Cpk<1' : 'Cpk≥1'} Individual Lot Measurement Table_${periodType === 'date' ? formatDayMonthYear(date) : formatMonthYear(date?.substring(0, 7))}.csv`}
+                        filename={`${seriesId.slice(0, 2) === 'nc' ? 'Cpk＜1' : 'Cpk≥1'} Individual Lot Measurement Table_${periodType === 'date' ? formatDayMonthYear(date) : formatMonthYear(date?.substring(0, 7))}.csv`}
                         generalInfo={[
                             { label: 'Report', value: 'Individual Lot Measurement Table' },
                             { label: 'MeasDate', value: formatMonthYear(date?.substring(0, 7)) },

@@ -788,8 +788,11 @@ const LotCPKBarChart = () => {
                       height={500}
                       sx={(theme) => ({
                         "& .MuiChartsAxis-directionY .MuiChartsAxis-label": {
-                          fill: `${theme.palette.primary.main} !important`,
+                          fill: `${theme.palette.mode === 'dark' ? '#fff' : theme.palette.text.primary} !important`,
                           transform: "translateX(-25px) !important",
+                        },
+                        "& .MuiChartsAxis-directionY .MuiChartsAxis-tickLabel": {
+                          fill: `${theme.palette.mode === 'dark' ? '#fff' : theme.palette.text.primary} !important`,
                         },
                       })}
                       slotProps={{ legend: { labelStyle: { fontSize: 16 }, position: { vertical: 'bottom', horizontal: 'middle' }, direction: 'row' }, noDataOverlay: { message: 'No Result' } }}
@@ -905,8 +908,11 @@ const LotCPKBarChart = () => {
                         scale: "0.8",
                       },
                       "& .MuiChartsAxis-directionY .MuiChartsAxis-label": {
-                        fill: `${theme.palette.primary.main} !important`,
+                        fill: `${theme.palette.mode === 'dark' ? '#fff' : theme.palette.text.primary} !important`,
                         transform: "translateX(-25px) !important",
+                      },
+                      "& .MuiChartsAxis-directionY .MuiChartsAxis-tickLabel": {
+                        fill: `${theme.palette.mode === 'dark' ? '#fff' : theme.palette.text.primary} !important`,
                       },
                     })}
                     slotProps={{ legend: { hidden: true }, noDataOverlay: { message: 'No Result' } }}

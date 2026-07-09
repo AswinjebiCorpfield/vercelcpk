@@ -503,12 +503,15 @@ const FilterManager = ({ data, filters = {}, setFilters, onFilterUpdate, monthOp
         </Box>
       )}
       <Tooltip title="Clear all filters">
-        <IconButton
+        <Button
+          variant="outlined"
+          size="small"
           onClick={handleClearFilters}
-          sx={{ ml: 'auto', mb: 0.25, border: '1px solid', borderColor: 'divider', borderRadius: 1.5, color: 'text.secondary', '&:hover': { color: 'error.main', borderColor: 'error.main' } }}
+          startIcon={<FilterAltOffIcon fontSize="small" />}
+          sx={{ ml: 'auto', mb: 0.25, fontSize: 12.5, fontWeight: 700, textTransform: 'none' }}
         >
-          <FilterAltOffIcon fontSize="small" />
-        </IconButton>
+          Clear
+        </Button>
       </Tooltip>
     </Box>
     </Box>
