@@ -24,6 +24,7 @@ import MemoryIcon from '@mui/icons-material/Memory';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import CategoryIcon from '@mui/icons-material/Category';
 
 // 最简 Minitab 正态曲线（100% 正确）
 const generateMinitabNormalCurve = (values, bins = 20) => {
@@ -244,7 +245,7 @@ const HistogramComponent = ({ tableData, LSL, USL }) => {
   );
 };
 
-const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, statistics, lotDataFilename, subsampleFilename }) => {
+const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, statistics, lotDataFilename, subsampleFilename, subsampleUseMeasDate }) => {
   const MAX_NC = 0.9949; // CP低于等于该值时标红
   const [loading, setLoading] = useState(false);
   const [lotData, setLotData] = useState([]);
@@ -295,6 +296,18 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
   const [search, setSearch] = useState('');
   const [orderBy, setOrderBy] = useState('');
   const [order, setOrder] = useState('asc');
+
+  // Dimension CPK PPK treats this subsample export as individual-lot data → MeasDate
+  // ("May 03, 2026") + "Individual Lot Subsample Data" filename. Every other origin
+  // (e.g. Historical Dimension) keeps Period + the dimension filename passed in.
+  const subMeasDateRaw = subsampleUseMeasDate ? subsampleData?.[0]?.MeasDate : null;
+  const subsampleDateField = subMeasDateRaw
+    ? { label: 'MeasDate', value: new Date(subMeasDateRaw).toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }) }
+    : { label: 'Period', value: Period };
+  const cleanMaterialForFile = String(row?.MaterialDesc || 'Material').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+  const effectiveSubsampleFilename = subMeasDateRaw
+    ? `${cleanMaterialForFile}_Individual Lot Subsample Data_${dayjs(subMeasDateRaw).format('DD MMM YYYY')}.csv`
+    : subsampleFilename;
 
   const handleSort = (col) => {
     if (orderBy === col) {
@@ -378,7 +391,7 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
               ]}
               generalInfo={[
                 { label: 'Report', value: 'Subsample Distribution — Lot Data' },
-                { label: 'Period', value: Period },
+                { label: 'Period', value: Period, asText: true },
                 { label: 'Dept', value: row?.Dept || '' },
                 { label: 'MachineId', value: row?.MachineId || '' },
                 { label: 'MaterialDesc', value: row?.MaterialDesc || '' },
@@ -414,7 +427,7 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
               ]}
               generalInfo={[
                 { label: 'Report', value: 'Subsample Distribution — Raw Data' },
-                { label: 'Period', value: Period },
+                { ...subsampleDateField, asText: true },
                 { label: 'Dept', value: row?.Dept || '' },
                 { label: 'MachineId', value: row?.MachineId || '' },
                 { label: 'MaterialDesc', value: row?.MaterialDesc || '' },
@@ -422,7 +435,7 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
                 { label: 'CAT', value: row?.CAT || '' },
               ]}
               statistics={statistics}
-              filename={subsampleFilename ?? buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data')}
+              filename={effectiveSubsampleFilename ?? buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data')}
             >
               Download Subsample Data
             </CsvExportButton>
@@ -553,7 +566,7 @@ const HistogramAndPie = ({
             if (containerRef.current) {
                 const width = containerRef.current.offsetWidth;
                 setPlotWidth(width);
-                setPlotHeight(displayPP ? Math.round(width * 0.72) : Math.min(Math.round(width * 0.42), 360));
+                setPlotHeight(displayPP ? Math.round(width * 0.72) : Math.min(Math.round(width * 0.5), 420));
             }
         }
         handleResize();
@@ -1133,10 +1146,12 @@ const OverallLotsDistributionTable = () => {
     : '';
   const periodDisplay = periodRangeLabel || formattedPeriod;
 
-  // BRD H (Individual Lot Cpk): the lot-level general-info date field is the
-  // measurement date — labelled "MeasDate" and shown as e.g. "Jan 14, 2026".
-  const formattedMeasDate = row?.MeasDate
-    ? new Date(row.MeasDate).toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit' })
+  // BRD H (Individual Lot Cpk): the lot-level general-info date field is the measurement
+  // date. Prefer the row's MeasDate, else the subsample data's — the Dimension CPK PPK →
+  // lot drill carries the date on the subsample rows, not on the row itself.
+  const subsampleMeasDateRaw = row?.MeasDate || filteredTableData?.[0]?.MeasDate;
+  const formattedMeasDate = subsampleMeasDateRaw
+    ? new Date(subsampleMeasDateRaw).toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit' })
     : '';
 
   // Download filename conventions (BRD):
@@ -1147,7 +1162,7 @@ const OverallLotsDistributionTable = () => {
   // so strip only those and keep spaces to match the requested format.
   const cleanMaterialForFile = String(row?.MaterialDesc || 'Material').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
   const periodLabelForFile = periodDisplay || String(Period || '');
-  const measDateForFile = row?.MeasDate ? dayjs(row.MeasDate).format('D MMM YYYY') : periodLabelForFile;
+  const measDateForFile = subsampleMeasDateRaw ? dayjs(subsampleMeasDateRaw).format('DD MMM YYYY') : periodLabelForFile;
   // Dimension CPK PPK and Historical Dimension drill-ins both use the "Dimension …" naming.
   const isDimensionOrigin = originModule === '/lots-cpk-ppk-bar' || originModule === '/lots-historical-summary';
   const dimensionLotDataFilename = isDimensionOrigin
@@ -1156,9 +1171,11 @@ const OverallLotsDistributionTable = () => {
   const dimensionSubsampleFilename = isDimensionOrigin
     ? `${cleanMaterialForFile}_Dimension Subsample Data_${periodLabelForFile}.csv`
     : buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data');
-  const individualLotSubsampleFilename = originModule === '/lot-cpk-bar'
-    ? `${cleanMaterialForFile}_Individual Lot Subsample Data_${measDateForFile}.csv`
-    : dimensionSubsampleFilename;
+  // The main "Subsample Information" export always renders for a single lot (row.LotNo
+  // set), so it always uses the "Individual Lot Subsample Data_<MeasDate>" name — no
+  // matter which module the drill originated from (Individual Lot Cpk, Dimension Cpk Ppk,
+  // Historical Dimension, …).
+  const individualLotSubsampleFilename = `${cleanMaterialForFile}_Individual Lot Subsample Data_${measDateForFile}.csv`;
 
   // BRD (Individual Lot Cpk & Dimension Cpk Ppk): the exported file carries a
   // "Statistics" block (one field per row) alongside "General Information".
@@ -1187,39 +1204,9 @@ const OverallLotsDistributionTable = () => {
       }}
       >
       <Grid container spacing={3}>
-        {/* 左侧块 */}
+        {/* 左侧块: General Information + Statistics */}
         <Grid item xs={12} md={6}>
-          <Box sx={{ width: '100%', boxSizing: 'border-box' }}>
-            {/* Histogram */}
-          <Box sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', height: '100%', boxSizing: 'border-box' }}>
-            <Typography variant="h6" gutterBottom>
-              Subsample Distribution Histogram
-            </Typography>
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-                <CircularProgress />
-              </Box>
-            ) : filteredTableData.length > 0 ? (
-              <HistogramAndPie
-                tableData={filteredTableData}
-                LSL={filteredTableData[0].LSL}
-                USL={filteredTableData[0].USL}
-                displayPP={displayPP}
-                carbPieData={carbPieData}
-                tempPieData={tempPieData}
-                pieFilter={pieFilter}
-                setPieFilter={setPieFilter}
-                showPies={false}
-              />
-            ) : (
-              <Typography variant="body2" color="text.secondary">No data available</Typography>
-            )}
-          </Box>
-          </Box>
-        </Grid>
-        {/* 右侧块 */}
-        <Grid item xs={12} md={6}>
-          {/* General Information + Statistics (top of right column) */}
+          {/* General Information + Statistics (top of left column) */}
           <Grid container spacing={3} sx={{ mb: displayPP ? 3 : 0, height: displayPP ? undefined : '100%' }}>
             <Grid item xs={12} sm={7}>
               <Box sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', height: '100%' }}>
@@ -1244,7 +1231,7 @@ const OverallLotsDistributionTable = () => {
                       : (Period && { icon: <CalendarMonthIcon fontSize="small" />, label: 'Period', value: periodDisplay })),
                     row?.Dept && { icon: <GroupsIcon fontSize="small" />, label: 'Dept', value: row.Dept },
                     row?.MachineId && { icon: <MemoryIcon fontSize="small" />, label: 'MachineId', value: row.MachineId },
-                    row?.CAT && { icon: <LocalOfferIcon fontSize="small" />, label: 'CAT', value: row.CAT },
+                    row?.CAT && { icon: <CategoryIcon fontSize="small" />, label: 'CAT', value: row.CAT },
                     // No Of Data is omitted — redundant with the Statistics panel's "No of Data" tile.
                     row?.MaterialDesc && { icon: <Inventory2Icon fontSize="small" />, label: 'MaterialDesc', value: row.MaterialDesc, full: true },
                     row?.DimensionDesc && { icon: <StraightenIcon fontSize="small" />, label: 'DimensionDesc', value: row.DimensionDesc, full: true },
@@ -1345,6 +1332,36 @@ const OverallLotsDistributionTable = () => {
             </Box>
           )}
         </Grid>
+        {/* 右侧块: Subsample Distribution Histogram */}
+        <Grid item xs={12} md={6}>
+          <Box sx={{ width: '100%', boxSizing: 'border-box' }}>
+            {/* Histogram */}
+          <Box sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', height: '100%', boxSizing: 'border-box' }}>
+            <Typography variant="h6" gutterBottom>
+              Subsample Distribution Histogram
+            </Typography>
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+                <CircularProgress />
+              </Box>
+            ) : filteredTableData.length > 0 ? (
+              <HistogramAndPie
+                tableData={filteredTableData}
+                LSL={filteredTableData[0].LSL}
+                USL={filteredTableData[0].USL}
+                displayPP={displayPP}
+                carbPieData={carbPieData}
+                tempPieData={tempPieData}
+                pieFilter={pieFilter}
+                setPieFilter={setPieFilter}
+                showPies={false}
+              />
+            ) : (
+              <Typography variant="body2" color="text.secondary">No data available</Typography>
+            )}
+          </Box>
+          </Box>
+        </Grid>
         {row?.LotNo ? (
         <Grid item xs={12}>
           <Box sx={{ width: '100%', boxSizing: 'border-box', p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
@@ -1377,7 +1394,11 @@ const OverallLotsDistributionTable = () => {
               ]}
               generalInfo={[
                 { label: 'Report', value: 'Subsample Distribution — Raw Data' },
-                { label: 'Period', value: Period },
+                // The Individual Lot subsample export is for a single measurement date, so
+                // show it as MeasDate ("Mar 03, 2026") like the on-screen panel — not the
+                // period. asText keeps it left-aligned and stops Excel collapsing it to
+                // "20/11/2025".
+                { label: 'MeasDate', value: formattedMeasDate, asText: true },
                 { label: 'Dept', value: row?.Dept || '' },
                 { label: 'MachineId', value: row?.MachineId || '' },
                 { label: 'MaterialDesc', value: row?.MaterialDesc || '' },
@@ -1478,7 +1499,7 @@ const OverallLotsDistributionTable = () => {
       {!row?.LotNo && (
         <Grid item xs={12}>
           <Box sx={{ width: '100%', boxSizing: 'border-box', p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-            <IndividualLotTableGeneralInfo row={row} Period={Period} pieFilter={pieFilter} subsampleData={filteredTableData} statistics={statisticsForExport} lotDataFilename={dimensionLotDataFilename} subsampleFilename={dimensionSubsampleFilename} />
+            <IndividualLotTableGeneralInfo row={row} Period={Period} pieFilter={pieFilter} subsampleData={filteredTableData} statistics={statisticsForExport} lotDataFilename={dimensionLotDataFilename} subsampleFilename={dimensionSubsampleFilename} subsampleUseMeasDate={originModule === '/lots-cpk-ppk-bar'} />
           </Box>
         </Grid>
       )}

@@ -52,20 +52,28 @@ const CsvExportButton = ({ data, headers, filename = 'data.csv', generalInfo, st
       return escapeCsvField(value);
     };
 
+    // Force a value to left-aligned TEXT via the ="…" formula form — both Excel and
+    // Google Sheets evaluate it to the literal string and never re-parse it. Needed for
+    // date-looking strings ("Mar 03, 2026") that Excel would otherwise right-align and
+    // collapse to a compact serial date ("Oct-25"). Opt-in per field via `asText: true`.
+    const textCell = (value) => `"=""${String(value ?? '').replace(/"/g, '""')}"""`;
+
     // Emit a labelled block. Default: one "label,value" row per field (vertical).
     // With sectionsAsColumns: a header row of field labels + a single values row,
     // so each field lands in its own separate column. `leftAlign` forces numeric
-    // values to be treated as left-aligned text in Excel.
+    // values to be treated as left-aligned text in Excel; a field may also set
+    // `asText: true` to force that single value to left-aligned text.
     const pushBlock = (heading, rows, leftAlign = false) => {
       if (!Array.isArray(rows) || !rows.length) return;
       lines.push(escapeCsvField(heading));
       const valueCell = leftAlign ? leftAlignCell : escapeCsvField;
+      const cellFor = (r) => (r.asText ? textCell(r.value) : valueCell(r.value));
       if (sectionsAsColumns) {
         lines.push(rows.map(r => escapeCsvField(r.label)).join(','));
-        lines.push(rows.map(r => valueCell(r.value)).join(','));
+        lines.push(rows.map(cellFor).join(','));
       } else {
-        rows.forEach(({ label, value }) => {
-          lines.push(`${escapeCsvField(label)},${valueCell(value)}`);
+        rows.forEach((r) => {
+          lines.push(`${escapeCsvField(r.label)},${cellFor(r)}`);
         });
       }
       lines.push(''); // blank separator row

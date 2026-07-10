@@ -26,7 +26,10 @@ function formatMonthYear(monthStr) {
     if (!monthStr) return '';
     const [year, month] = monthStr.split('-');
     if (!year || !month) return monthStr;
-    const date = new Date(`${year}-${month}-01`);
+    // Construct in LOCAL time. `new Date('YYYY-MM-01')` is parsed as UTC midnight and
+    // can slip back a month in negative-offset timezones (Nov → "Oct"), which is what
+    // made the exported MeasDate read "Oct-25" instead of the clicked November date.
+    const date = new Date(Number(year), Number(month) - 1, 1);
     return `${date.toLocaleString('en-US', { month: 'short' })} ${year}`; // 'Feb 2024'
 }
 
@@ -742,6 +745,12 @@ const IndividualLotClickedTable = () => {
                                     : 'No period info'
                         }
                     </Typography>
+                    <Typography
+                        variant="body2"
+                        sx={{ color: 'primary.main', fontStyle: 'italic', mt: 0.75, letterSpacing: 0.3 }}
+                    >
+                        ⓘ Important Note: Scroll the table to the right for more details.
+                    </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
                     {hasActiveFilters && (
@@ -761,7 +770,17 @@ const IndividualLotClickedTable = () => {
                         filename={`${seriesId.slice(0, 2) === 'nc' ? 'Cpk＜1' : 'Cpk≥1'} Individual Lot Measurement Table_${periodType === 'date' ? formatDayMonthYear(date) : formatMonthYear(date?.substring(0, 7))}.csv`}
                         generalInfo={[
                             { label: 'Report', value: 'Individual Lot Measurement Table' },
-                            { label: 'MeasDate', value: formatMonthYear(date?.substring(0, 7)) },
+                            // Show the measurement date the same way the table rows do
+                            // ("Mar 03, 2026"), sourced from the data so it stays consistent
+                            // with the rows below. asText keeps it left-aligned and stops
+                            // Excel collapsing it to a serial date ("Oct-25").
+                            {
+                                label: 'MeasDate',
+                                value: pieFilteredData[0]?.MeasDate
+                                    ? formatMeasDate(pieFilteredData[0].MeasDate)
+                                    : (periodType === 'date' ? formatMonthDate(date) : formatMonthYear(date?.substring(0, 7))),
+                                asText: true,
+                            },
                             { label: 'Dept', value: pieFilteredData[0]?.Dept || '' },
                         ]}
                         sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}

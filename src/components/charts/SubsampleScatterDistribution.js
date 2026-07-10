@@ -8,7 +8,6 @@ import QueryStatsIcon from '@mui/icons-material/QueryStats';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import CloseIcon from '@mui/icons-material/Close';
-import { metricColor } from '../../utils/metricFormat';
 import Box from '@mui/material/Box';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -43,6 +42,13 @@ const PIE_COLORS_MC4 = [
 ];
 
 const DEFAULT_DOT_COLOR = '#4F9EF8'; // bright blue — visible on the dark chart background
+
+// Capability-metric colour: green above the 0.9949 threshold (a Cpk that rounds to
+// ≥ 1.00), red at/below it, neutral for non-numeric ("-"/"*"/null). Matches the
+// scorecard/distribution tables so Cp/Cpk/Pp/Ppk read consistently.
+const STAT_MAX_NC = 0.9949;
+const statMetricColor = (v) =>
+  (v == null || v === '' || Number.isNaN(parseFloat(v))) ? undefined : (parseFloat(v) <= STAT_MAX_NC ? '#F54D41' : 'success.main');
 const UNMATCHED_DOT_COLOR = 'rgba(128,128,128,0.1)';
 
 const normalizeMonthValue = (value) => {
@@ -1068,6 +1074,9 @@ const SubsampleScatterDistribution = () => {
                 type: 'histogram',
                 orientation: 'h',
                 name: 'Histogram',
+                // Keep the default "(count, bin range)" hover but drop the "Histogram"
+                // trace-name box by excluding the 'name' flag from hoverinfo.
+                hoverinfo: 'x+y',
                 marker: {
                   color: clickedFurnace ? clickedFurnace.color : 'rgba(79,158,248,0.6)',
                   line: { color: 'white', width: 2 },
@@ -1176,13 +1185,31 @@ const SubsampleScatterDistribution = () => {
                       line: { color: '#F54D41', width: 2, dash: 'dot' },
                     }]
                   : []),
+                // Target line = (LSL + USL) / 2, drawn green (like the histogram's Target).
+                ...(Number.isFinite(targetValue)
+                  ? [{
+                      type: 'line',
+                      xref: 'paper',
+                      x0: 0,
+                      x1: 1,
+                      y0: targetValue,
+                      y1: targetValue,
+                      yref: 'y1',
+                      line: { color: 'green', width: 2, dash: 'dot' },
+                    }]
+                  : []),
                 ...verticalLineShape,
               ],
               annotations: [
+                // Anchored just inside the plot's left edge (x>0) and offset vertically off
+                // their lines so the labels no longer overlap the y-axis tick numbers
+                // (which render in the left margin at x<0).
                 ...(LSL !== null
                   ? [{
-                      x: -0.04,
+                      x: 0.01,
+                      xanchor: 'left',
                       y: LSL,
+                      yanchor: 'bottom',
                       xref: 'paper',
                       yref: 'y1',
                       text: 'LSL',
@@ -1192,13 +1219,28 @@ const SubsampleScatterDistribution = () => {
                   : []),
                 ...(USL !== null
                   ? [{
-                      x: -0.04,
+                      x: 0.01,
+                      xanchor: 'left',
                       y: USL,
+                      yanchor: 'top',
                       xref: 'paper',
                       yref: 'y1',
                       text: 'USL',
                       showarrow: false,
                       font: { color: '#F54D41', size: 14 },
+                    }]
+                  : []),
+                ...(Number.isFinite(targetValue)
+                  ? [{
+                      x: 0.01,
+                      xanchor: 'left',
+                      y: targetValue,
+                      yanchor: 'bottom',
+                      xref: 'paper',
+                      yref: 'y1',
+                      text: 'Target',
+                      showarrow: false,
+                      font: { color: 'green', size: 14 },
                     }]
                   : []),
                 ...verticalLineAnnotation,
@@ -1312,11 +1354,19 @@ const SubsampleScatterDistribution = () => {
                 </Box>
                 {/* TVC labelling beside the pie */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, alignItems: 'flex-start', minWidth: 0 }}>
-                  {(furnacePieDataSorted.length ? furnacePieDataSorted : []).map((item) => (
-                    <Box key={item.rawLabel ?? item.label} sx={{ px: 1, py: 0.5, borderRadius: 1, border: '1px solid', borderColor: item.color, color: item.color, fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>
-                      {(item.rawLabel ?? item.label)} ({item.value})
+                  {(furnacePieDataSorted.length ? furnacePieDataSorted : []).map((item) => {
+                    const lbl = item.rawLabel ?? item.label;
+                    const active = clickedFurnace?.type === 'MC2' && clickedFurnace?.label === lbl;
+                    return (
+                    <Box
+                      key={lbl}
+                      onClick={() => { if (lbl !== 'No Data') setClickedFurnace(active ? null : { type: 'MC2', label: lbl, color: item.color }); }}
+                      sx={{ px: 1, py: 0.5, borderRadius: 1, border: '1px solid', borderColor: item.color, color: active ? '#222' : item.color, bgcolor: active ? item.color : 'transparent', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', cursor: lbl === 'No Data' ? 'default' : 'pointer', '&:hover': lbl === 'No Data' ? {} : { bgcolor: item.color, color: '#222' } }}
+                    >
+                      {lbl} ({item.value})
                     </Box>
-                  ))}
+                    );
+                  })}
                 </Box>
               </Box>
             </Box>
@@ -1358,11 +1408,19 @@ const SubsampleScatterDistribution = () => {
                 </Box>
                 {/* TAT labelling beside the pie */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, alignItems: 'flex-start', minWidth: 0 }}>
-                  {(temperingPieDataSorted.length ? temperingPieDataSorted : []).map((item) => (
-                    <Box key={item.rawLabel ?? item.label} sx={{ px: 1, py: 0.5, borderRadius: 1, border: '1px solid', borderColor: item.color, color: item.color, fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>
-                      {(item.rawLabel ?? item.label)} ({item.value})
+                  {(temperingPieDataSorted.length ? temperingPieDataSorted : []).map((item) => {
+                    const lbl = item.rawLabel ?? item.label;
+                    const active = clickedFurnace?.type === 'MC4' && clickedFurnace?.label === lbl;
+                    return (
+                    <Box
+                      key={lbl}
+                      onClick={() => { if (lbl !== 'No Data') setClickedFurnace(active ? null : { type: 'MC4', label: lbl, color: item.color }); }}
+                      sx={{ px: 1, py: 0.5, borderRadius: 1, border: '1px solid', borderColor: item.color, color: active ? '#222' : item.color, bgcolor: active ? item.color : 'transparent', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', cursor: lbl === 'No Data' ? 'default' : 'pointer', '&:hover': lbl === 'No Data' ? {} : { bgcolor: item.color, color: '#222' } }}
+                    >
+                      {lbl} ({item.value})
                     </Box>
-                  ))}
+                    );
+                  })}
                 </Box>
               </Box>
             </Box>
@@ -1457,11 +1515,11 @@ const SubsampleScatterDistribution = () => {
                 { label: 'Std Dev', value: statisticsToShow?.StdValue != null ? Number(statisticsToShow.StdValue).toFixed(3) : '-' },
                 { label: 'LSL', value: allData[0]?.LSL ?? '-' },
                 { label: 'USL', value: allData[0]?.USL ?? '-' },
-                { label: 'Target', value: targetValue, color: 'success.main' },
-                { label: 'CP', value: statisticsToShow?.CPValue ?? '-', color: metricColor(statisticsToShow?.CPValue) },
-                { label: 'CPK', value: statisticsToShow?.CPKValue ?? '-', color: metricColor(statisticsToShow?.CPKValue) },
-                { label: 'PP', value: statisticsToShow?.PPValue ?? '-', color: metricColor(statisticsToShow?.PPValue) },
-                { label: 'PPK', value: statisticsToShow?.PPKValue ?? '-', color: metricColor(statisticsToShow?.PPKValue) },
+                { label: 'Target', value: targetValue },
+                { label: 'CP', value: statisticsToShow?.CPValue ?? '-', color: statMetricColor(statisticsToShow?.CPValue) },
+                { label: 'CPK', value: statisticsToShow?.CPKValue ?? '-', color: statMetricColor(statisticsToShow?.CPKValue) },
+                { label: 'PP', value: statisticsToShow?.PPValue ?? '-', color: statMetricColor(statisticsToShow?.PPValue) },
+                { label: 'PPK', value: statisticsToShow?.PPKValue ?? '-', color: statMetricColor(statisticsToShow?.PPKValue) },
               ].map((s) => (
                 <Grid container item xs={12} alignItems="top" key={s.label}>
                   <Grid item xs={5}>
@@ -1481,10 +1539,10 @@ const SubsampleScatterDistribution = () => {
               { label: 'Std Dev', value: statisticsToShow?.StdValue != null ? Number(statisticsToShow.StdValue).toFixed(3) : '-' },
               { label: 'LSL', value: allData[0]?.LSL ?? '-' },
               { label: 'USL', value: allData[0]?.USL ?? '-' },
-              { label: 'Target', value: targetValue, color: 'success.main' },
-              { label: 'CP', value: statisticsToShow?.CPValue ?? '-', color: metricColor(statisticsToShow?.CPValue) },
-              { label: 'CPK', value: statisticsToShow?.CPKValue ?? '-', color: metricColor(statisticsToShow?.CPKValue) },
-              { label: 'PP', value: statisticsToShow?.PPValue ?? '-', color: metricColor(statisticsToShow?.PPValue) },
+              { label: 'Target', value: targetValue },
+              { label: 'CP', value: statisticsToShow?.CPValue ?? '-', color: statMetricColor(statisticsToShow?.CPValue) },
+              { label: 'CPK', value: statisticsToShow?.CPKValue ?? '-', color: statMetricColor(statisticsToShow?.CPKValue) },
+              { label: 'PP', value: statisticsToShow?.PPValue ?? '-', color: statMetricColor(statisticsToShow?.PPValue) },
             ].map((s) => (
               <Grid item xs={4} key={s.label}>
                 <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, textAlign: 'center', bgcolor: 'action.hover', height: '100%' }}>

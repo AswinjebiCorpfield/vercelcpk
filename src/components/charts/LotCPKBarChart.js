@@ -766,7 +766,7 @@ const LotCPKBarChart = () => {
             </Grid>
             {/* Bar chart */}
             <Grid item xs={12} md sx={{ minWidth: 400, overflow: 'auto', flexGrow: 1, flexBasis: 0, maxWidth: 'none' }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center', mb: 1 }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center', mb: 0.25 }}>
                 Individual Lot Monthly Cpk Performance ({displayMode === 'Count' ? 'Count' : 'Percentage'})
               </Typography>
               <Box sx={{ marginBottom: 2, width: '100%', overflowX: 'auto' }}>
@@ -787,6 +787,11 @@ const LotCPKBarChart = () => {
                     <BarChart
                       height={500}
                       sx={(theme) => ({
+                        // Data labels printed on the bars in black — far more legible on the
+                        // bright green (and red) segments than the default white.
+                        "& .MuiBarLabel-root": {
+                          fill: '#000 !important',
+                        },
                         "& .MuiChartsAxis-directionY .MuiChartsAxis-label": {
                           fill: `${theme.palette.mode === 'dark' ? '#fff' : theme.palette.text.primary} !important`,
                           transform: "translateX(-25px) !important",
@@ -796,18 +801,18 @@ const LotCPKBarChart = () => {
                         },
                       })}
                       slotProps={{ legend: { labelStyle: { fontSize: 16 }, position: { vertical: 'bottom', horizontal: 'middle' }, direction: 'row' }, noDataOverlay: { message: 'No Result' } }}
-                      margin={{ left: 80, right: 50, top: monthlyManyPoints ? 75 : 55, bottom: monthlyManyPoints ? 130 : 110 }}
+                      margin={{ left: 80, right: 50, top: monthlyManyPoints ? 55 : 38, bottom: monthlyManyPoints ? 130 : 110 }}
                       series={[
                         {
                           data: displayMode === 'Percentage' ? monthlyDatasetsFilled.acPercent : monthlyDatasetsFilled.acData,
-                          label: displayMode === 'Percentage' ? 'Cpk ≥ 1 Individual Lot (%)' : 'Cpk ≥ 1 Individual Lot (Count)',
+                          label: displayMode === 'Percentage' ? 'CPK ≥ 1 Individual Lot (%)' : 'CPK ≥ 1 Individual Lot (Count)',
                           id: `acId-month`,
                           stack: 'total',
                           color: '#22C55E',
                         },
                         {
                           data: displayMode === 'Percentage' ? monthlyDatasetsFilled.ncPercent : monthlyDatasetsFilled.ncData,
-                          label: displayMode === 'Percentage' ? 'Cpk < 1 Individual Lot (%)' : 'Cpk < 1 Individual Lot (Count)',
+                          label: displayMode === 'Percentage' ? 'CPK < 1 Individual Lot (%)' : 'CPK < 1 Individual Lot (Count)',
                           id: `ncId-month`,
                           stack: 'total',
                           color: '#F54D41',
@@ -918,12 +923,12 @@ const LotCPKBarChart = () => {
                     slotProps={{ legend: { hidden: true }, noDataOverlay: { message: 'No Result' } }}
                     margin={{ left: 80, right: 50, top: 30, bottom: dailyManyPoints ? 90 : 70 }}
                     onMarkClick={(event, d) => handleBarClick(event, d, dailyDatasetsFilled)}
-                    height={340}
+                    height={460}
 
                     series={[
                       {
                         data: displayMode === 'Percentage' ? dailyDatasetsFilled.acPercent : dailyDatasetsFilled.acData,
-                        label: displayMode === 'Percentage' ? 'CPK ≥ 1 Individual Lot (%)' : 'Cpk ≥ 1 Individual Lot (Count)',
+                        label: displayMode === 'Percentage' ? 'CPK ≥ 1 Individual Lot (%)' : 'CPK ≥ 1 Individual Lot (Count)',
                         id: 'acId-day',
                         color: '#22C55E',
                         connectNulls: true, // NULL 等同于 0 — 保持折线连续
@@ -977,14 +982,17 @@ const LotCPKBarChart = () => {
               </Box>
               {/* Static legend outside the horizontally-scrolling chart so it's always visible */}
               {!dataLoading && dailyData !== null && dailyHasData && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, flexWrap: 'wrap', mt: 1 }}>
+                // Marker/label styling mirrors the monthly stacked-column chart's
+                // built-in MUI legend (20×20 square mark, 5px mark gap, 10px item
+                // gap, 16px label) so both charts read as one system.
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', mt: 1 }}>
                   {[
-                    { color: '#22C55E', label: displayMode === 'Percentage' ? 'Cpk ≥ 1 Individual Lot (%)' : 'Cpk ≥ 1 Individual Lot (Count)' },
+                    { color: '#22C55E', label: displayMode === 'Percentage' ? 'CPK ≥ 1 Individual Lot (%)' : 'CPK ≥ 1 Individual Lot (Count)' },
                     { color: 'red', label: displayMode === 'Percentage' ? 'CPK < 1 Individual Lot (%)' : 'CPK < 1 Individual Lot (Count)' },
                   ].map((item) => (
-                    <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Box sx={{ width: 16, height: 16, borderRadius: 0.5, backgroundColor: item.color }} />
-                      <Typography sx={{ fontSize: 14 }}>{item.label}</Typography>
+                    <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <Box sx={{ width: 20, height: 20, backgroundColor: item.color }} />
+                      <Typography sx={{ fontSize: 16 }}>{item.label}</Typography>
                     </Box>
                   ))}
                 </Box>

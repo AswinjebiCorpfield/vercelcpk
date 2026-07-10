@@ -638,7 +638,7 @@ useEffect(() => {
                 ) : (
                   <Box sx={{ marginBottom: 2, minHeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', overflowX: 'auto', width: '100%' }}>
                     <div className="custom-x-padding-bottom" style={{ width: '100%', minWidth: 600 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center', mb: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center', mb: 0.25 }}>
                       Dimension Monthly {dataset.subtitle.includes('PPK') ? 'Ppk' : 'Cpk'} Performance ({displayMode === 'Count' ? 'Count' : 'Percentage'})
                     </Typography>
                     {(() => {
@@ -653,7 +653,12 @@ useEffect(() => {
                         <BarChart
                           height={500}
                           sx={(theme) => ({
-                            marginTop: 2,
+                            marginTop: 0.5,
+                            // Data labels printed on the bars in black — far more legible on the
+                            // bright green (and red) segments than the default white.
+                            "& .MuiBarLabel-root": {
+                              fill: '#000 !important',
+                            },
                             "& .MuiChartsAxis-directionY .MuiChartsAxis-label": {
                               fill: `${theme.palette.mode === 'dark' ? '#fff' : theme.palette.text.primary} !important`,
                             },
@@ -661,7 +666,7 @@ useEffect(() => {
                               fill: `${theme.palette.mode === 'dark' ? '#fff' : theme.palette.text.primary} !important`,
                             },
                           })}
-                          margin={showAllTicks ? { left: 80, right: 50, top: 75, bottom: 130 } : { left: 80, right: 50, top: 55, bottom: 110 }}
+                          margin={showAllTicks ? { left: 80, right: 50, top: 55, bottom: 130 } : { left: 80, right: 50, top: 38, bottom: 110 }}
                           series={[
                             {
                               data: dataset.acData,

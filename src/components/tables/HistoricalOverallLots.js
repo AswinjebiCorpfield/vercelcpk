@@ -444,6 +444,13 @@ const MonthlyHistoricalOverallLots = () => {
     [tableHeaders]
   );
 
+  // The full month span currently shown (first → last column), formatted e.g.
+  // "Aug 2025 – Jul 2026". Used for the export's Period field + filename so they always
+  // reflect the displayed range even when Start/End Month use the default recent-12 values.
+  const periodRange = monthHeaderKeys.length
+    ? [monthHeaderKeys[0], monthHeaderKeys[monthHeaderKeys.length - 1]].map(formatMonthCol).join(' – ')
+    : '';
+
   // Active per-month value filters (min/max set) — drives the badge + chips.
   const activeMonthValueFilters = useMemo(
     () => Object.entries(monthRangeFilters).filter(([, f]) =>
@@ -678,18 +685,17 @@ const MonthlyHistoricalOverallLots = () => {
               <span>
                 <CsvExportButton
                   data={filledFilteredData}
-                  // Export omits the "Analysis" column (UI-only drill-in buttons) and the
-                  // MachineId / MaterialDesc / DimensionDesc / CAT identity columns (per request).
-                  headers={tableHeaders.filter(h => !['Analysis', 'MachineId', 'MaterialDesc', 'DimensionDesc', 'CAT'].includes(h))}
+                  // Export omits only the "Analysis" column (UI-only drill-in buttons); the
+                  // identity columns (MachineId / MaterialDesc / DimensionDesc / CAT) are kept
+                  // as per-row table columns.
+                  headers={tableHeaders.filter(h => h !== 'Analysis')}
                   generalInfo={[
-                    { label: 'Report', value: 'Historical Monthly Measurement Table' },
-                    { label: 'Period', value: [filters.StartMonth, filters.EndMonth].filter(Boolean).join(' – ') },
+                    { label: 'Report', value: 'Historical Dimension Measurement Table' },
+                    // Displayed month range, e.g. "Aug 2025 – Jul 2026" (matches the filename).
+                    { label: 'Period', value: periodRange },
                     { label: 'Dept', value: filters.Dept || '' },
                   ]}
-                  filename={(() => {
-                    const range = [filters.StartMonth, filters.EndMonth].filter(Boolean).map(formatMonthCol).join(' – ');
-                    return `Historical Dimension Measurement Table${range ? '_' + range : ''}.csv`;
-                  })()}
+                  filename={`Historical Dimension Measurement Table${periodRange ? '_' + periodRange : ''}.csv`}
                   sx={{ px: 1.5, height: 36, textTransform: 'none', whiteSpace: 'nowrap', color: 'text.secondary', borderColor: 'divider' }}
                 >
                   Export

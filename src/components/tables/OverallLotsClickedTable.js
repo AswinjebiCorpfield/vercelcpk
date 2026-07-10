@@ -347,7 +347,12 @@ const OverallLotsClickedTable = () => {
 
     const handlePieClick = (filterKey, value) => {
         const currentSelection = filterValues[filterKey] || [];
-        const newSelection = currentSelection.includes(value) ? [] : [value];
+        // Toggle just this value so a pie/legend click stays consistent with the
+        // multi-select furnace list (previously it replaced/cleared the whole selection,
+        // so clicking one chip wiped out the others).
+        const newSelection = currentSelection.includes(value)
+            ? currentSelection.filter(v => v !== value)
+            : [...currentSelection, value];
         setFilterValues(prev => ({ ...prev, [filterKey]: newSelection }));
         setPage(0);
     };
@@ -453,17 +458,23 @@ const OverallLotsClickedTable = () => {
                                     justifyContent: 'flex-start',
                                 }}>
                                     {(filterValues.BatchMC2 && filterValues.BatchMC2.length > 0) ? (
+                                        // One chip per selected furnace (multi-select) so the legend
+                                        // matches every slice in the pie, not just the first value.
+                                        filterValues.BatchMC2.map((sel) => {
+                                            const slice = carbPieData.find(item => item.label === sel);
+                                            const sliceColor = slice?.color || '#90caf9';
+                                            return (
                                         <Box
-                                            key={filterValues.BatchMC2[0]}
+                                            key={sel}
                                             sx={{
                                                 cursor: 'pointer',
                                                 px: 1,
                                                 py: 1,
                                                 borderRadius: 1,
-                                                background: carbPieData.find(item => item.label === filterValues.BatchMC2[0])?.color || '#90caf9',
+                                                background: sliceColor,
                                                 color: '#222',
                                                 fontWeight: 700,
-                                                border: `1px solid ${carbPieData.find(item => item.label === filterValues.BatchMC2[0])?.color || '#90caf9'}`,
+                                                border: `1px solid ${sliceColor}`,
                                                 mb: 1,
                                                 minWidth: 0,
                                                 fontSize: 13,
@@ -472,10 +483,12 @@ const OverallLotsClickedTable = () => {
                                                     opacity: 0.8
                                                 },
                                             }}
-                                            onClick={() => handlePieClick('BatchMC2', filterValues.BatchMC2[0])}
+                                            onClick={() => handlePieClick('BatchMC2', sel)}
                                         >
-                                            {filterValues.BatchMC2[0]} ({carbPieData.find(item => item.label === filterValues.BatchMC2[0])?.value || 0})
+                                            {sel} ({slice?.value || 0})
                                         </Box>
+                                            );
+                                        })
                                     ) : (
                                         carbPieData.map((item) => (
                                             <Box
@@ -538,17 +551,23 @@ const OverallLotsClickedTable = () => {
                                     justifyContent: 'flex-start',
                                 }}>
                                     {(filterValues.BatchMC4 && filterValues.BatchMC4.length > 0) ? (
+                                        // One chip per selected furnace (multi-select) so the legend
+                                        // matches every slice in the pie, not just the first value.
+                                        filterValues.BatchMC4.map((sel) => {
+                                            const slice = tempPieData.find(item => item.label === sel);
+                                            const sliceColor = slice?.color || '#a5d6a7';
+                                            return (
                                         <Box
-                                            key={filterValues.BatchMC4[0]}
+                                            key={sel}
                                             sx={{
                                                 cursor: 'pointer',
                                                 px: 1,
                                                 py: 1,
                                                 borderRadius: 1,
-                                                background: tempPieData.find(item => item.label === filterValues.BatchMC4[0])?.color || '#a5d6a7',
+                                                background: sliceColor,
                                                 color: '#222',
                                                 fontWeight: 700,
-                                                border: `1px solid ${tempPieData.find(item => item.label === filterValues.BatchMC4[0])?.color || '#a5d6a7'}`,
+                                                border: `1px solid ${sliceColor}`,
                                                 mb: 1,
                                                 minWidth: 0,
                                                 fontSize: 13,
@@ -557,10 +576,12 @@ const OverallLotsClickedTable = () => {
                                                     opacity: 0.8
                                                 },
                                             }}
-                                            onClick={() => handlePieClick('BatchMC4', filterValues.BatchMC4[0])}
+                                            onClick={() => handlePieClick('BatchMC4', sel)}
                                         >
-                                            {filterValues.BatchMC4[0]} ({tempPieData.find(item => item.label === filterValues.BatchMC4[0])?.value || 0})
+                                            {sel} ({slice?.value || 0})
                                         </Box>
+                                            );
+                                        })
                                     ) : (
                                         tempPieData.map((item) => (
                                             <Box
@@ -624,17 +645,23 @@ const OverallLotsClickedTable = () => {
                                     justifyContent: 'flex-start',
                                 }}>
                                     {(filterValues.MaterialDesc && filterValues.MaterialDesc.length > 0) ? (
+                                        // One chip per selected material group (multi-select) so the
+                                        // legend matches every slice in the pie, not just the first.
+                                        filterValues.MaterialDesc.map((sel) => {
+                                            const slice = materialPieData.find(item => item.label === sel);
+                                            const sliceColor = slice?.color || '#ffd54f';
+                                            return (
                                         <Box
-                                            key={filterValues.MaterialDesc[0]}
+                                            key={sel}
                                             sx={{
                                                 cursor: 'pointer',
                                                 px: 2,
                                                 py: 1,
                                                 borderRadius: 1,
-                                                background: materialPieData.find(item => item.label === filterValues.MaterialDesc[0])?.color || '#ffd54f',
+                                                background: sliceColor,
                                                 color: '#222',
                                                 fontWeight: 700,
-                                                border: `1px solid ${materialPieData.find(item => item.label === filterValues.MaterialDesc[0])?.color || '#ffd54f'}`,
+                                                border: `1px solid ${sliceColor}`,
                                                 mb: 1,
                                                 minWidth: 0,
                                                 fontSize: 13,
@@ -643,10 +670,12 @@ const OverallLotsClickedTable = () => {
                                                     opacity: 0.8
                                                 },
                                             }}
-                                            onClick={() => handlePieClick('MaterialDesc', filterValues.MaterialDesc[0])}
+                                            onClick={() => handlePieClick('MaterialDesc', sel)}
                                         >
-                                            {filterValues.MaterialDesc[0]} ({materialPieData.find(item => item.label === filterValues.MaterialDesc[0])?.value || 0})
+                                            {sel} ({slice?.value || 0})
                                         </Box>
+                                            );
+                                        })
                                     ) : (
                                         materialPieData.map((item) => (
                                             <Box
@@ -696,6 +725,12 @@ const OverallLotsClickedTable = () => {
                         <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: 'body1.fontSize', sm: 'h6.fontSize' }, mb: 0 }}>
                             Period: {formatMonthYear(date) || 'No date provided'}
                         </Typography>
+                        <Typography
+                            variant="body2"
+                            sx={{ color: 'primary.main', fontStyle: 'italic', mt: 0.75, letterSpacing: 0.3 }}
+                        >
+                            ⓘ Important Note: Scroll the table to the right for more details.
+                        </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
                     {hasActiveFilters && (
@@ -711,6 +746,10 @@ const OverallLotsClickedTable = () => {
                     <CsvExportButton
                         data={finalFilteredData.map(r => ({
                             ...r,
+                            // Period column mirrors the on-screen table + General Information (the
+                            // drill-in period), not the raw row value — so the export doesn't show a
+                            // different month than the report it was opened from.
+                            Period: formatMonthYear(date),
                             // Show the Cpk<1 lot rate as a percentage (matches the on-screen cell).
                             CPK_NC_Percentage: (r.CPK_NC_Percentage !== undefined && r.CPK_NC_Percentage !== null && !isNaN(r.CPK_NC_Percentage))
                                 ? Number(r.CPK_NC_Percentage).toFixed(0) + '%'
@@ -725,7 +764,8 @@ const OverallLotsClickedTable = () => {
                         filename={`${metric === 'PPK' ? 'Ppk' : 'Cpk'}${resultType === 'ac' ? '≥1' : '＜1'} Dimension Measurement Table_${formatMonthYear(date) || 'Export'}.csv`}
                         generalInfo={[
                             { label: 'Report', value: 'Dimension Measurement Table' },
-                            { label: 'Period', value: formatMonthYear(date) },
+                            // asText keeps it left-aligned and stops Excel collapsing "Feb 2026" to "Feb-26".
+                            { label: 'Period', value: formatMonthYear(date), asText: true },
                             { label: 'Dept', value: state.Dept || 'HT' },
                         ]}
                         sx={{ flexShrink: 0 }}
