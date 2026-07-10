@@ -245,7 +245,7 @@ const HistogramComponent = ({ tableData, LSL, USL }) => {
   );
 };
 
-const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, statistics, lotDataFilename, subsampleFilename, subsampleUseMeasDate }) => {
+const IndividualLotTableGeneralInfo = ({ row, Period, periodDisplay, pieFilter, subsampleData, statistics, lotDataFilename, subsampleFilename }) => {
   const MAX_NC = 0.9949; // CP低于等于该值时标红
   const [loading, setLoading] = useState(false);
   const [lotData, setLotData] = useState([]);
@@ -296,18 +296,6 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
   const [search, setSearch] = useState('');
   const [orderBy, setOrderBy] = useState('');
   const [order, setOrder] = useState('asc');
-
-  // Dimension CPK PPK treats this subsample export as individual-lot data → MeasDate
-  // ("May 03, 2026") + "Individual Lot Subsample Data" filename. Every other origin
-  // (e.g. Historical Dimension) keeps Period + the dimension filename passed in.
-  const subMeasDateRaw = subsampleUseMeasDate ? subsampleData?.[0]?.MeasDate : null;
-  const subsampleDateField = subMeasDateRaw
-    ? { label: 'MeasDate', value: new Date(subMeasDateRaw).toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }) }
-    : { label: 'Period', value: Period };
-  const cleanMaterialForFile = String(row?.MaterialDesc || 'Material').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
-  const effectiveSubsampleFilename = subMeasDateRaw
-    ? `${cleanMaterialForFile}_Individual Lot Subsample Data_${dayjs(subMeasDateRaw).format('DD MMM YYYY')}.csv`
-    : subsampleFilename;
 
   const handleSort = (col) => {
     if (orderBy === col) {
@@ -391,7 +379,8 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
               ]}
               generalInfo={[
                 { label: 'Report', value: 'Subsample Distribution — Lot Data' },
-                { label: 'Period', value: Period, asText: true },
+                // Dimension-level list = multiple lots across multiple days → Period (not MeasDate).
+                { label: 'Period', value: periodDisplay, asText: true },
                 { label: 'Dept', value: row?.Dept || '' },
                 { label: 'MachineId', value: row?.MachineId || '' },
                 { label: 'MaterialDesc', value: row?.MaterialDesc || '' },
@@ -427,7 +416,8 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
               ]}
               generalInfo={[
                 { label: 'Report', value: 'Subsample Distribution — Raw Data' },
-                { ...subsampleDateField, asText: true },
+                // Dimension-level list = multiple lots across multiple days → Period (not MeasDate).
+                { label: 'Period', value: periodDisplay, asText: true },
                 { label: 'Dept', value: row?.Dept || '' },
                 { label: 'MachineId', value: row?.MachineId || '' },
                 { label: 'MaterialDesc', value: row?.MaterialDesc || '' },
@@ -435,7 +425,7 @@ const IndividualLotTableGeneralInfo = ({ row, Period, pieFilter, subsampleData, 
                 { label: 'CAT', value: row?.CAT || '' },
               ]}
               statistics={statistics}
-              filename={effectiveSubsampleFilename ?? buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data')}
+              filename={subsampleFilename ?? buildExportFilename(row?.MaterialDesc, Period, 'Subsample_Data')}
             >
               Download Subsample Data
             </CsvExportButton>
@@ -1499,7 +1489,7 @@ const OverallLotsDistributionTable = () => {
       {!row?.LotNo && (
         <Grid item xs={12}>
           <Box sx={{ width: '100%', boxSizing: 'border-box', p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-            <IndividualLotTableGeneralInfo row={row} Period={Period} pieFilter={pieFilter} subsampleData={filteredTableData} statistics={statisticsForExport} lotDataFilename={dimensionLotDataFilename} subsampleFilename={dimensionSubsampleFilename} subsampleUseMeasDate={originModule === '/lots-cpk-ppk-bar'} />
+            <IndividualLotTableGeneralInfo row={row} Period={Period} periodDisplay={periodDisplay} pieFilter={pieFilter} subsampleData={filteredTableData} statistics={statisticsForExport} lotDataFilename={dimensionLotDataFilename} subsampleFilename={dimensionSubsampleFilename} />
           </Box>
         </Grid>
       )}

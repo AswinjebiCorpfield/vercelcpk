@@ -1019,6 +1019,9 @@ function ChartBlock({
                   type: 'histogram',
                   orientation: 'h', // 横向
                   name: 'Histogram',
+                  // Keep the default "(count, bin range)" hover but drop the "Histogram"
+                  // trace-name box by excluding the 'name' flag from hoverinfo.
+                  hoverinfo: 'x+y',
                   marker: {
                     color: clickedFurnace ? clickedFurnace.color : 'rgba(79,158,248,0.6)',
                     line: { color: 'white', width: 2 },
@@ -1082,7 +1085,7 @@ function ChartBlock({
                 width: undefined,
                 height: CHART_HEIGHT,
                 autosize: true,
-                margin: { t: 40, l: 60, r: 30, b: 130 },
+                margin: { t: 40, l: 60, r: 70, b: 130 },
                 shapes: [
                   ...(LSL !== null
                     ? [
@@ -1112,13 +1115,31 @@ function ChartBlock({
                         },
                       ]
                     : []),
+                  // Target line = (LSL + USL) / 2, drawn green like the histogram's Target.
+                  ...((LSL !== null && USL !== null && Number.isFinite((Number(LSL) + Number(USL)) / 2))
+                    ? [
+                        {
+                          type: 'line',
+                          xref: 'paper',
+                          x0: 0,
+                          x1: 1,
+                          y0: (Number(LSL) + Number(USL)) / 2,
+                          y1: (Number(LSL) + Number(USL)) / 2,
+                          yref: 'y',
+                          line: { color: 'green', width: 2, dash: 'dot' },
+                        },
+                      ]
+                    : []),
                   ...verticalLineShape,
                 ],
                 annotations: [
+                  // Spec labels placed just past the plot's right edge (paper x=1) so they
+                  // no longer overlap the y-axis tick numbers on the left.
                   ...(LSL !== null
                     ? [
                         {
-                          x: -0.04,
+                          x: 1,
+                          xanchor: 'left',
                           y: LSL,
                           xref: 'paper',
                           yref: 'y',
@@ -1132,7 +1153,8 @@ function ChartBlock({
                   ...(USL !== null
                     ? [
                         {
-                          x: -0.04,
+                          x: 1,
+                          xanchor: 'left',
                           y: USL,
                           xref: 'paper',
                           yref: 'y',
@@ -1140,6 +1162,20 @@ function ChartBlock({
                           showarrow: false,
                           yshift: 12,
                           font: { color: '#F54D41', size: 14 },
+                        },
+                      ]
+                    : []),
+                  ...((LSL !== null && USL !== null && Number.isFinite((Number(LSL) + Number(USL)) / 2))
+                    ? [
+                        {
+                          x: 1,
+                          xanchor: 'left',
+                          y: (Number(LSL) + Number(USL)) / 2,
+                          xref: 'paper',
+                          yref: 'y',
+                          text: 'Target',
+                          showarrow: false,
+                          font: { color: 'green', size: 14 },
                         },
                       ]
                     : []),

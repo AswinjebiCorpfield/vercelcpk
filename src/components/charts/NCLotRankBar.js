@@ -559,8 +559,8 @@ useEffect(() => {
                                     <Typography sx={{ fontSize: 15, color: 'grey.600', py: 6, textAlign: 'center' }}>No Result</Typography>
                                 ) : (
                                     <BarChart
-                                        height={460}
-                                        margin={{ left: 54, right: 20, top: 16, bottom: 185 }}
+                                        height={400}
+                                        margin={{ left: 54, right: 20, top: 16, bottom: 120 }}
                                         xAxis={[{
                                             data: chartMaterialData.map(r => (r.MaterialDesc || '').split(' ').join('\n')),
                                             scaleType: 'band',
@@ -642,7 +642,7 @@ useEffect(() => {
                                                             {Number.isFinite(pct) ? pct.toFixed(2) : row.PPK_NC_Percentage}%
                                                         </TableCell>
                                                         <TableCell>
-                                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'stretch' }}>
+                                                            <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
                                                                 <Button size="small" startIcon={<AssessmentIcon />} variant="contained" color="primary" sx={{ color: 'darkblue', textTransform: 'none', justifyContent: 'flex-start' }}
                                                                     onClick={() => drill('nc-scatter-bar-chart', { state: { value: row.MaterialDesc, filters: { ...filters, MaterialDesc: row.MaterialDesc }, source: 'MaterialDesc' } })}>
                                                                     HRA / HRC
