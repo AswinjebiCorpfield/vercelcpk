@@ -27,7 +27,7 @@ import { TimeSeriesContext } from '../../context/TimeSeriesContext';
 
 const PlotlyComponent = createPlotlyComponent(Plotly);
 // (SLIDER_WIDTH floor removed — layout is now fluid/responsive)
-const CHART_HEIGHT = 560;
+const CHART_HEIGHT = 650;
 
 const PIE_COLORS = [
   '#4FC3F7', '#81C784', '#FFD54F', '#FF8A65', '#BA68C8', '#F06292', '#FFF176', '#AED581', '#9575CD', '#64B5F6'
@@ -1068,24 +1068,24 @@ function ChartBlock({
                   range: [fixedYMinPad, fixedYMaxPad],
                   showticklabels: true,
                   fixedrange: true,
-                  tickfont: { size: 14, color: axisTextColor },
+                  tickfont: { size: 16, color: axisTextColor },
                   gridcolor: gridColor,
                   zerolinecolor: gridColor,
                 },
-                // 右侧：histogram 共享Y轴
+                // 右侧：histogram 共享Y轴 — MeasValue 与 Count 轴字号统一（16/16）
                 xaxis2: {
-                  title: { text: 'Count', font: { size: 20, color: axisTextColor } },
+                  title: { text: 'Count', font: { size: 16, color: axisTextColor } },
                   domain: [0.74, 1],
                   showticklabels: true,
-                  titlefont: { size: 20, color: axisTextColor },
-                  tickfont: { size: 20, color: axisTextColor },
+                  titlefont: { size: 16, color: axisTextColor },
+                  tickfont: { size: 16, color: axisTextColor },
                   gridcolor: gridColor,
                   zerolinecolor: gridColor,
                 },
                 width: undefined,
                 height: CHART_HEIGHT,
                 autosize: true,
-                margin: { t: 40, l: 60, r: 70, b: 130 },
+                margin: { t: 40, l: 80, r: 60, b: 120 },
                 shapes: [
                   ...(LSL !== null
                     ? [
@@ -1133,8 +1133,9 @@ function ChartBlock({
                   ...verticalLineShape,
                 ],
                 annotations: [
-                  // Spec labels placed just past the plot's right edge (paper x=1) so they
-                  // no longer overlap the y-axis tick numbers on the left.
+                  // Spec labels anchored just past the plot's right edge, sitting on their
+                  // dashed lines — LSL/USL/Target all placed the same way on the right
+                  // (matches the Historical Dimension distribution chart).
                   ...(LSL !== null
                     ? [
                         {
@@ -1145,7 +1146,6 @@ function ChartBlock({
                           yref: 'y',
                           text: 'LSL',
                           showarrow: false,
-                          yshift: -12,
                           font: { color: '#F54D41', size: 14 },
                         },
                       ]
@@ -1160,7 +1160,6 @@ function ChartBlock({
                           yref: 'y',
                           text: 'USL',
                           showarrow: false,
-                          yshift: 12,
                           font: { color: '#F54D41', size: 14 },
                         },
                       ]

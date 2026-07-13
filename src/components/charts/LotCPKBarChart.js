@@ -743,12 +743,12 @@ const LotCPKBarChart = () => {
         <Card sx={{ mt: 0, width: '100%', p: 2, pb: 1, mb: 2.5 }}>
           <Grid container direction="row" spacing={2}>
             {/* Overview */}
-            <Grid item xs={12} md={2} sx={{ maxWidth: { md: 200 } }}>
+            <Grid item xs={12} md={2} sx={{ minWidth: 180, maxWidth: { md: 210 } }}>
               <Box sx={{ width: '100%', px: 1.5, py: 1 }}>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1.5 }}>
+                <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1.25 }}>
                   Individual Lot Cpk Scorecard
                 </Typography>
-                <Stack spacing={1}>
+                <Stack spacing={1.25}>
                   <KpiTile label="CPK ≥ 1 Percentage" color={KPI.pct}
                     value={`${monthlyDatasetsFilled.averagePercentage.toFixed(1)}%`} />
                   <KpiTile label="CPK ≥ 1 Lots Count" color={KPI.ac}
@@ -757,8 +757,7 @@ const LotCPKBarChart = () => {
                     value={new Intl.NumberFormat().format(monthlyDatasetsFilled.totalNC)} />
                 </Stack>
                 <Typography
-                  variant="body2"
-                  sx={{ color: 'primary.main', fontStyle: 'italic', mt: 2, letterSpacing: 0.3 }}
+                  sx={{ fontSize: 11, color: 'primary.main', fontStyle: 'italic', mt: 1.25, letterSpacing: 0.3, lineHeight: 1.3 }}
                 >
                   ⓘ Important Note: Click a column bar to view details.
                 </Typography>
@@ -866,12 +865,12 @@ const LotCPKBarChart = () => {
         <Card sx={{ mt: 0, width: '100%', p: 2, mb: 3 }}>
           <Grid container direction="row" spacing={2}>
             {/* Overview area */}
-            <Grid item xs={12} md={2} sx={{ maxWidth: { md: 200 } }}>
+            <Grid item xs={12} md={2} sx={{ minWidth: 180, maxWidth: { md: 210 } }}>
               <Box sx={{ width: '100%', px: 1.5, py: 1 }}>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1.5 }}>
+                <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1.25 }}>
                   Individual Lot Cpk Scorecard
                 </Typography>
-                <Stack spacing={1}>
+                <Stack spacing={1.25}>
                   <KpiTile label="CPK ≥ 1 Percentage" color={KPI.pct}
                     value={`${dailyDatasetsFilled.averagePercentage.toFixed(1)}%`} />
                   <KpiTile label="CPK ≥ 1 Lots Count" color={KPI.ac}
@@ -880,8 +879,7 @@ const LotCPKBarChart = () => {
                     value={new Intl.NumberFormat().format(dailyDatasetsFilled.totalNC)} />
                 </Stack>
                 <Typography
-                  variant="body2"
-                  sx={{ color: 'primary.main', fontStyle: 'italic', mt: 2, letterSpacing: 0.3 }}
+                  sx={{ fontSize: 11, color: 'primary.main', fontStyle: 'italic', mt: 1.25, letterSpacing: 0.3, lineHeight: 1.3 }}
                 >
                   ⓘ Important Note: Click a line data point to view details.
                 </Typography>

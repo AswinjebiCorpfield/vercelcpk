@@ -9,7 +9,7 @@ export default function KpiTile({ label, value, color }) {
   return (
     <Box
       sx={{
-        px: 1.5, py: 1.15,
+        px: 1.25, py: 0.75,
         borderRadius: 1.5,
         bgcolor: (theme) => alpha(color, theme.palette.mode === 'light' ? 0.08 : 0.16),
         border: '1px solid',
@@ -18,10 +18,10 @@ export default function KpiTile({ label, value, color }) {
         '&:hover': { transform: 'translateY(-1px)', boxShadow: `0 4px 12px ${alpha(color, 0.22)}` },
       }}
     >
-      <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.5, mb: 0.2 }}>
+      <Typography sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 0.4, mb: 0.25, lineHeight: 1.15 }}>
         {label}
       </Typography>
-      <Typography sx={{ fontSize: '1.4rem', fontWeight: 800, color, lineHeight: 1.05 }}>
+      <Typography sx={{ fontSize: '1.625rem', fontWeight: 800, color, lineHeight: 1.05 }}>
         {value}
       </Typography>
     </Box>

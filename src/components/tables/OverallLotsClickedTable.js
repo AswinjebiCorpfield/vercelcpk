@@ -920,7 +920,7 @@ const OverallLotsClickedTable = () => {
                                                     startIcon={<AssessmentIcon />}
                                                     variant="contained"
                                                     color="primary"
-                                                    sx={{ color: 'darkblue', fontSize: { xs: '0.6rem', sm: '0.75rem' }, padding: { xs: '4px', sm: '6px' }, textTransform: 'none' }}
+                                                    sx={{ color: '#000', fontSize: { xs: '0.6rem', sm: '0.75rem' }, padding: { xs: '4px', sm: '6px' }, textTransform: 'none' }}
                                                     onClick={(e) => {
                                                         e.stopPropagation(); // don't also fire the row's onClick (double history entry)
                                                         drill('lots-sample-distribution-table', {
@@ -935,7 +935,7 @@ const OverallLotsClickedTable = () => {
                                                 {/* BRD M3b: Historical Analysis -> default 6-month scattered distribution + raw data */}
                                                 <Button
                                                     startIcon={<HistoryIcon />}
-                                                    variant="outlined"
+                                                    variant="contained"
                                                     color="info"
                                                     sx={{ fontSize: { xs: '0.6rem', sm: '0.75rem' }, padding: { xs: '4px', sm: '6px' }, textTransform: 'none' }}
                                                     onClick={(e) => {

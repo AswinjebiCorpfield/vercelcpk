@@ -529,10 +529,15 @@ useEffect(() => {
                         <Box sx={{ pt: 0, pb: 2, width: '100%' }}>
                             {/* KF1 — Clustered column: Top 10 Material Desc ranked by Ppk<1 Individual Lot Count */}
                             <Card sx={{ p: 3, mb: 3, backgroundColor: 'background.paper' }}>
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.5 }}>
-                                    <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                                        {`Top ${effectiveTopN} Material Description`} — Ranked by Ppk &lt; 1 Individual Lot Count
-                                    </Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+                                    <Box sx={{ flex: 1, minWidth: 260 }}>
+                                        <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                                            {`Top ${effectiveTopN} Material Description`} — Ranked by Ppk &lt; 1 Individual Lot Count
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'primary.main', fontStyle: 'italic', letterSpacing: 0.3 }}>
+                                            ⓘ Important Note: Click a bar — or the action buttons in the summary below — to drill into the analysis.
+                                        </Typography>
+                                    </Box>
                                     <TextField
                                         type="number"
                                         size="small"
@@ -552,9 +557,6 @@ useEffect(() => {
                                         InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
                                     />
                                 </Box>
-                                <Typography variant="body2" sx={{ color: 'primary.main', fontStyle: 'italic', mb: 2, letterSpacing: 0.3 }}>
-                                    ⓘ Important Note: Click a bar — or the action buttons in the summary below — to drill into the analysis.
-                                </Typography>
                                 {isMaterialAllZero || materialNCData.length === 0 ? (
                                     <Typography sx={{ fontSize: 15, color: 'grey.600', py: 6, textAlign: 'center' }}>No Result</Typography>
                                 ) : (
@@ -637,13 +639,13 @@ useEffect(() => {
                                                         <TableCell sx={{ color: 'text.secondary' }}>{row.CarburizingFurnace || '-'}</TableCell>
                                                         <TableCell sx={{ color: 'text.secondary' }}>{row.TemperingFurnace || '-'}</TableCell>
                                                         <TableCell sx={{ color: 'text.primary' }}>{row.Total_Count}</TableCell>
-                                                        <TableCell sx={{ color: 'error.main', fontWeight: 700 }}>{row.PPK_NC_Count}</TableCell>
-                                                        <TableCell sx={{ color: Number.isFinite(pct) && pct >= 50 ? '#dc2626' : '#d97706', fontWeight: 700 }}>
+                                                        <TableCell sx={{ color: (theme) => theme.palette.mode === 'dark' ? '#f87171' : '#dc2626', fontWeight: 700 }}>{row.PPK_NC_Count}</TableCell>
+                                                        <TableCell sx={{ color: (theme) => (Number.isFinite(pct) && pct >= 50) ? (theme.palette.mode === 'dark' ? '#f87171' : '#dc2626') : '#d97706', fontWeight: 700 }}>
                                                             {Number.isFinite(pct) ? pct.toFixed(2) : row.PPK_NC_Percentage}%
                                                         </TableCell>
                                                         <TableCell>
                                                             <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
-                                                                <Button size="small" startIcon={<AssessmentIcon />} variant="contained" color="primary" sx={{ color: 'darkblue', textTransform: 'none', justifyContent: 'flex-start' }}
+                                                                <Button size="small" startIcon={<AssessmentIcon />} variant="contained" color="primary" sx={{ color: '#000', textTransform: 'none', justifyContent: 'flex-start' }}
                                                                     onClick={() => drill('nc-scatter-bar-chart', { state: { value: row.MaterialDesc, filters: { ...filters, MaterialDesc: row.MaterialDesc }, source: 'MaterialDesc' } })}>
                                                                     HRA / HRC
                                                                 </Button>

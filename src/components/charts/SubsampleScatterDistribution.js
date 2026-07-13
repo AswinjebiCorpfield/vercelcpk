@@ -1152,14 +1152,14 @@ const SubsampleScatterDistribution = () => {
                 zerolinecolor: gridColor,
               },
               xaxis2: {
-                title: { text: 'Count', font: { size: 20, color: axisTextColor } },
+                title: { text: 'Count', font: { size: 16, color: axisTextColor } },
                 domain: [0.74, 1],
-                tickfont: { size: 20, color: axisTextColor },
+                tickfont: { size: 16, color: axisTextColor },
               },
               width: undefined,
               height: CHART_HEIGHT,
               autosize: true,
-              margin: { t: 40, l: 80, r: 40, b: 120 },
+              margin: { t: 40, l: 80, r: 60, b: 120 },
               shapes: [
                 ...(LSL !== null
                   ? [{
@@ -1201,15 +1201,13 @@ const SubsampleScatterDistribution = () => {
                 ...verticalLineShape,
               ],
               annotations: [
-                // Anchored just inside the plot's left edge (x>0) and offset vertically off
-                // their lines so the labels no longer overlap the y-axis tick numbers
-                // (which render in the left margin at x<0).
+                // Spec labels anchored just past the plot's right edge, sitting on their
+                // dashed lines — LSL/USL/Target all placed the same way on the right.
                 ...(LSL !== null
                   ? [{
-                      x: 0.01,
+                      x: 1,
                       xanchor: 'left',
                       y: LSL,
-                      yanchor: 'bottom',
                       xref: 'paper',
                       yref: 'y1',
                       text: 'LSL',
@@ -1219,10 +1217,9 @@ const SubsampleScatterDistribution = () => {
                   : []),
                 ...(USL !== null
                   ? [{
-                      x: 0.01,
+                      x: 1,
                       xanchor: 'left',
                       y: USL,
-                      yanchor: 'top',
                       xref: 'paper',
                       yref: 'y1',
                       text: 'USL',
@@ -1232,10 +1229,9 @@ const SubsampleScatterDistribution = () => {
                   : []),
                 ...(Number.isFinite(targetValue)
                   ? [{
-                      x: 0.01,
+                      x: 1,
                       xanchor: 'left',
                       y: targetValue,
-                      yanchor: 'bottom',
                       xref: 'paper',
                       yref: 'y1',
                       text: 'Target',
@@ -1320,7 +1316,7 @@ const SubsampleScatterDistribution = () => {
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
               <Typography variant="subtitle1" textAlign="center" sx={{ mb: 1, fontWeight: 600 }}>Carburizing Furnace (TVC)</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1.5, width: '100%' }}>
-                <Box sx={{ position: 'relative', width: 160, height: 160, flexShrink: 0 }}>
+                <Box sx={{ position: 'relative', width: 150, height: 150, flexShrink: 0 }}>
                   <PieChart
                     series={[
                       {
@@ -1330,16 +1326,16 @@ const SubsampleScatterDistribution = () => {
                         highlightScope: { faded: 'global', highlighted: 'item' },
                         cornerRadius: 6,
                         paddingAngle: 2,
-                        innerRadius: 48,
-                        outerRadius: 74,
-                        cx: 80,
-                        cy: 80,
+                        innerRadius: 44,
+                        outerRadius: 72,
+                        cx: 75,
+                        cy: 75,
                         color: (item) => item.color,
                       },
                     ]}
                     slotProps={{ legend: { hidden: true } }}
-                    width={160}
-                    height={160}
+                    width={150}
+                    height={150}
                     margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
                     onItemClick={(event, d) => {
                       const pie = furnacePieDataSorted[d.dataIndex];
@@ -1374,7 +1370,7 @@ const SubsampleScatterDistribution = () => {
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
               <Typography variant="subtitle1" textAlign="center" sx={{ mb: 1, fontWeight: 600 }}>Tempering Furnace (TAT)</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1.5, width: '100%' }}>
-                <Box sx={{ position: 'relative', width: 160, height: 160, flexShrink: 0 }}>
+                <Box sx={{ position: 'relative', width: 150, height: 150, flexShrink: 0 }}>
                   <PieChart
                     series={[
                       {
@@ -1384,10 +1380,10 @@ const SubsampleScatterDistribution = () => {
                         highlightScope: { faded: 'global', highlighted: 'item' },
                         cornerRadius: 6,
                         paddingAngle: 2,
-                        innerRadius: 48,
-                        outerRadius: 74,
-                        cx: 80,
-                        cy: 80,
+                        innerRadius: 44,
+                        outerRadius: 72,
+                        cx: 75,
+                        cy: 75,
                         color: (item) => item.color,
                       },
                     ]}
@@ -1398,8 +1394,8 @@ const SubsampleScatterDistribution = () => {
                       else setClickedFurnace({ type: 'MC4', label: pie.rawLabel, color: pie.color });
                     }}
                     slotProps={{ legend: { hidden: true } }}
-                    width={160}
-                    height={160}
+                    width={150}
+                    height={150}
                     margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
                   />
                   <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>

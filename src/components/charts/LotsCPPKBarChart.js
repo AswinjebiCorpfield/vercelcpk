@@ -601,12 +601,12 @@ useEffect(() => {
         {finalDatasets.map((dataset, index) => (
           <Card elevation={0} sx={{ mt: 0, width: '100%', p: 2, mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }} key={index}>
             <Grid container direction="row" spacing={2}>
-              <Grid item xs={12} md={2} sx={{ minWidth: 200, maxWidth: { md: 200 } }}>
+              <Grid item xs={12} md={2} sx={{ minWidth: 180, maxWidth: { md: 210 } }}>
                 <Box sx={{ width: '100%', px: 1.5, py: 1 }}>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1.5 }}>
+                  <Typography sx={{ fontSize: 16, fontWeight: 600, mb: 1.25 }}>
                     Dimension {dataset.subtitle.includes('PPK') ? 'Ppk' : 'Cpk'} Scorecard
                   </Typography>
-                  <Stack spacing={1}>
+                  <Stack spacing={1.25}>
                     <KpiTile label={`${dataset.subtitle.slice(-3)} ≥ 1 Percentage`} color={KPI.pct}
                       value={`${dataset.averagePercent.toFixed(1)}%`} />
                     <KpiTile label={`${dataset.subtitle.slice(-3)} ≥ 1 Dimension Count`} color={KPI.ac}
@@ -615,8 +615,7 @@ useEffect(() => {
                       value={new Intl.NumberFormat().format(dataset.totalNC)} />
                   </Stack>
                   <Typography
-                    variant="body2"
-                    sx={{ color: 'primary.main', fontStyle: 'italic', mt: 2, letterSpacing: 0.3 }}
+                    sx={{ fontSize: 11, color: 'primary.main', fontStyle: 'italic', mt: 1.25, letterSpacing: 0.3, lineHeight: 1.3 }}
                   >
                     ⓘ Important Note: Click a column bar to view details.
                   </Typography>
