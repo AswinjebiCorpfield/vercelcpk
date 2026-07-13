@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, CircularProgress, TablePagination, Collapse } from '@mui/material';
 import { formatMetric } from '../../utils/metricFormat';
@@ -18,6 +18,12 @@ import CsvExportButton from '../CsvExportButton';
 import { PieChart } from '@mui/x-charts/PieChart';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import SearchIcon from '@mui/icons-material/Search';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import FormatSizeIcon from '@mui/icons-material/FormatSize';
+import Slider from '@mui/material/Slider';
+import Tooltip from '@mui/material/Tooltip';
 
 function formatMonthYear(monthStr) {
     if (!monthStr) return '';
@@ -68,7 +74,28 @@ const OverallLotsClickedTable = () => {
     const [filterAnchorEl, setFilterAnchorEl] = useState(null);
     const [filterColumn, setFilterColumn] = useState(null);
     const [leftOpen, setLeftOpen] = useState(true);
+    // Table toolbar controls (mirrors the Historical Dimension table): free-text search,
+    // full-screen toggle, and adjustable table font size.
+    const [search, setSearch] = useState('');
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [tableFontSize, setTableFontSize] = useState(12);
+    const tableCardRef = useRef(null);
     const drill = useDrilldownNavigate();
+
+    const toggleFullscreen = () => {
+        const el = tableCardRef.current;
+        if (!el) return;
+        if (!document.fullscreenElement) {
+            (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen)?.call(el);
+        } else {
+            (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen)?.call(document);
+        }
+    };
+    useEffect(() => {
+        const handleChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+        document.addEventListener('fullscreenchange', handleChange);
+        return () => document.removeEventListener('fullscreenchange', handleChange);
+    }, []);
 
     console.log('Component mounted with state:', state);
 
@@ -294,6 +321,19 @@ const OverallLotsClickedTable = () => {
     const finalFilteredData = React.useMemo(() => {
         return applyFilters(sortedData, filterValues);
     }, [sortedData, filterValues, applyFilters]);
+
+    // Free-text search across the visible columns (excludes the Analysis button column).
+    const searchedData = React.useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return finalFilteredData;
+        return finalFilteredData.filter(row =>
+            columns.some(col => {
+                if (col.id === 'FurtherAnalysis') return false;
+                const val = col.getValue ? col.getValue(row, date) : row[col.id];
+                return String(val ?? '').toLowerCase().includes(q);
+            })
+        );
+    }, [finalFilteredData, search, date]);
 
     const generatePieData = React.useCallback((sourceData, allFilters, pieKey, pieGroupKey) => {
         const crossFilters = { ...allFilters };
@@ -712,7 +752,7 @@ const OverallLotsClickedTable = () => {
             </Box>
 
             {/* 右侧表格区域 */}
-            <Box sx={{ flex: 1, minWidth: 0, order: { xs: 1, md: 'unset' }, width: { xs: '100%', md: 'auto' }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', p: { xs: 2, md: 3 } }}>
+            <Box ref={tableCardRef} sx={{ flex: 1, minWidth: 0, order: { xs: 1, md: 'unset' }, width: { xs: '100%', md: 'auto' }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', p: { xs: 2, md: 3 }, ...(isFullscreen && { overflow: 'auto', borderRadius: 0 }) }}>
                 {/* 标题与导出按钮同一行：标题左，下载按钮右 */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap', mb: 1 }}>
                     <Box sx={{ minWidth: 0 }}>
@@ -732,7 +772,7 @@ const OverallLotsClickedTable = () => {
                             ⓘ Important Note: Scroll the table to the right for more details.
                         </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {hasActiveFilters && (
                         <IconButton
                             size="small"
@@ -743,6 +783,43 @@ const OverallLotsClickedTable = () => {
                             <FilterAltOffIcon fontSize="small" />
                         </IconButton>
                     )}
+                    <TextField
+                        size="small"
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                        placeholder="Search..."
+                        sx={{ width: { xs: 150, sm: 200 } }}
+                        InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} /></InputAdornment>) }}
+                    />
+                    <Tooltip title={isFullscreen ? 'Exit full screen' : 'Full screen'}>
+                        <Button
+                            onClick={toggleFullscreen}
+                            variant="outlined"
+                            size="small"
+                            startIcon={isFullscreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
+                            sx={{ height: 40, textTransform: 'none', whiteSpace: 'nowrap', color: 'text.secondary', borderColor: 'divider' }}
+                        >
+                            {isFullscreen ? 'Exit' : 'Full Screen'}
+                        </Button>
+                    </Tooltip>
+                    <Tooltip title="Adjust table font size">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 170 }}>
+                            <FormatSizeIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                            <Slider
+                                value={tableFontSize}
+                                min={8}
+                                max={18}
+                                step={1}
+                                size="small"
+                                valueLabelDisplay="auto"
+                                onChange={(_, v) => setTableFontSize(v)}
+                                sx={{ width: 110 }}
+                            />
+                            <Typography sx={{ fontSize: 12, color: 'text.secondary', width: 34, textAlign: 'right' }}>
+                                {tableFontSize}px
+                            </Typography>
+                        </Box>
+                    </Tooltip>
                     <CsvExportButton
                         data={finalFilteredData.map(r => ({
                             ...r,
@@ -788,16 +865,16 @@ const OverallLotsClickedTable = () => {
                         <Table
                             sx={{
                                 minWidth: { xs: 800, md: 'auto' },
-                                '& .MuiTableCell-root': { fontSize: "0.82rem !important" },
+                                '& .MuiTableCell-root': { fontSize: `${tableFontSize}px !important` },
                                 // Branded header band (nav indigo + light text; readable in light & dark).
                                 '& .MuiTableHead-root .MuiTableCell-root': {
-                                    fontSize: "0.82rem !important", fontWeight: 'bold !important',
+                                    fontSize: `${tableFontSize}px !important`, fontWeight: 'bold !important',
                                     backgroundColor: 'custom.nav', color: 'custom.navText',
                                 },
                                 '& .MuiTableHead-root .MuiTableSortLabel-root, & .MuiTableHead-root .MuiTableSortLabel-root:hover, & .MuiTableHead-root .MuiTableSortLabel-root.Mui-active': { color: 'custom.navText' },
                                 '& .MuiTableHead-root .MuiTableSortLabel-icon': { color: 'custom.navText !important' },
                                 '& .MuiTableHead-root .MuiIconButton-root': { color: 'custom.navText' },
-                                '& .MuiTableSortLabel-root': { fontSize: "0.82rem !important" },
+                                '& .MuiTableSortLabel-root': { fontSize: `${tableFontSize}px !important` },
                             }}
                         >
                             <TableHead>
@@ -837,7 +914,7 @@ const OverallLotsClickedTable = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {finalFilteredData
+                                {searchedData
                                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                     .map((row, index) => (
                                     <TableRow key={index}
@@ -958,7 +1035,7 @@ const OverallLotsClickedTable = () => {
                                         </TableCell>
                                     </TableRow>
                                 ))}
-                                {finalFilteredData.length === 0 && (
+                                {searchedData.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={columns.length} align="center" sx={{ py: 3, color: 'text.secondary' }}>
                                             No matching results.
@@ -971,7 +1048,7 @@ const OverallLotsClickedTable = () => {
                     <TablePagination
                         rowsPerPageOptions={[100, 500, 1000]}
                         component="div"
-                        count={finalFilteredData.length}
+                        count={searchedData.length}
                         rowsPerPage={rowsPerPage}
                         page={page}
                         onPageChange={handleChangePage}

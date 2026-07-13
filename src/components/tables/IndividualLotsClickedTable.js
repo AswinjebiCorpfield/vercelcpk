@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Typography, CircularProgress, TablePagination } from '@mui/material';
 import { formatMetric } from '../../utils/metricFormat';
@@ -21,6 +21,12 @@ import { PieChart, pieArcLabelClasses } from '@mui/x-charts/PieChart';
 import Collapse from '@mui/material/Collapse';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import SearchIcon from '@mui/icons-material/Search';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import FormatSizeIcon from '@mui/icons-material/FormatSize';
+import Slider from '@mui/material/Slider';
+import Tooltip from '@mui/material/Tooltip';
 
 function formatMonthYear(monthStr) {
     if (!monthStr) return '';
@@ -123,6 +129,27 @@ const IndividualLotClickedTable = () => {
     const [filterColumn, setFilterColumn] = useState(null);
     const [rangeValues, setRangeValues] = useState({});
     const [leftOpen, setLeftOpen] = useState(true);
+    // Table toolbar controls (mirrors the Dimension / Historical tables): free-text search,
+    // full-screen toggle, and adjustable table font size.
+    const [search, setSearch] = useState('');
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [tableFontSize, setTableFontSize] = useState(12);
+    const tableCardRef = useRef(null);
+
+    const toggleFullscreen = () => {
+        const el = tableCardRef.current;
+        if (!el) return;
+        if (!document.fullscreenElement) {
+            (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen)?.call(el);
+        } else {
+            (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen)?.call(document);
+        }
+    };
+    useEffect(() => {
+        const handleChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+        document.addEventListener('fullscreenchange', handleChange);
+        return () => document.removeEventListener('fullscreenchange', handleChange);
+    }, []);
     const [pieFilter, setPieFilter] = useState({
         CarbonizingFurnace: null,
         TemperingFurnace: null,
@@ -440,6 +467,19 @@ const IndividualLotClickedTable = () => {
         });
     }, [finalFilteredData, pieFilter]);
 
+    // Free-text search across the visible columns (excludes the Analysis button column).
+    const searchedData = React.useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return pieFilteredData;
+        return pieFilteredData.filter(row =>
+            columns.some(col => {
+                if (col.id === 'FurtherAnalysis') return false;
+                const val = col.getValue ? col.getValue(row) : row[col.id];
+                return String(val ?? '').toLowerCase().includes(q);
+            })
+        );
+    }, [pieFilteredData, search]);
+
     // Pie chart data
     // 这里的 pieData 需要根据 pieFilteredData 计算，保证 pie 选项和 column filter 一样联动
     const carbPieData = getPieData(pieFilteredData, 'CarbonizingFurnace', PIE_COLORS);
@@ -730,7 +770,7 @@ const IndividualLotClickedTable = () => {
                 </Collapse>
             </Box>
             {/* 右侧主表格内容区域 */}
-            <Box sx={{ flex: 1, minWidth: 0, order: { xs: 1, md: 'unset' }, width: { xs: '100%', md: 'auto' }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', p: { xs: 2, md: 3 } }}>
+            <Box ref={tableCardRef} sx={{ flex: 1, minWidth: 0, order: { xs: 1, md: 'unset' }, width: { xs: '100%', md: 'auto' }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', p: { xs: 2, md: 3 }, ...(isFullscreen && { overflow: 'auto', borderRadius: 0 }) }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, mb: 1 }}>
                   <Box sx={{ minWidth: 0 }}>
                     <Typography variant="h4" gutterBottom sx={{ mb: 0.5 }}>
@@ -752,7 +792,7 @@ const IndividualLotClickedTable = () => {
                         ⓘ Important Note: Scroll the table to the right for more details.
                     </Typography>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {hasActiveFilters && (
                         <IconButton
                             size="small"
@@ -763,6 +803,43 @@ const IndividualLotClickedTable = () => {
                             <FilterAltOffIcon fontSize="small" />
                         </IconButton>
                     )}
+                    <TextField
+                        size="small"
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                        placeholder="Search..."
+                        sx={{ width: { xs: 150, sm: 200 } }}
+                        InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} /></InputAdornment>) }}
+                    />
+                    <Tooltip title={isFullscreen ? 'Exit full screen' : 'Full screen'}>
+                        <Button
+                            onClick={toggleFullscreen}
+                            variant="outlined"
+                            size="small"
+                            startIcon={isFullscreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
+                            sx={{ height: 40, textTransform: 'none', whiteSpace: 'nowrap', color: 'text.secondary', borderColor: 'divider' }}
+                        >
+                            {isFullscreen ? 'Exit' : 'Full Screen'}
+                        </Button>
+                    </Tooltip>
+                    <Tooltip title="Adjust table font size">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 170 }}>
+                            <FormatSizeIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                            <Slider
+                                value={tableFontSize}
+                                min={8}
+                                max={18}
+                                step={1}
+                                size="small"
+                                valueLabelDisplay="auto"
+                                onChange={(_, v) => setTableFontSize(v)}
+                                sx={{ width: 110 }}
+                            />
+                            <Typography sx={{ fontSize: 12, color: 'text.secondary', width: 34, textAlign: 'right' }}>
+                                {tableFontSize}px
+                            </Typography>
+                        </Box>
+                    </Tooltip>
                     {!loading && pieFilteredData.length > 0 && (
                     <CsvExportButton
                         data={pieFilteredData}
@@ -795,16 +872,16 @@ const IndividualLotClickedTable = () => {
                         <TableContainer component={Paper}>
                             <Table
                                 sx={{
-                                    '& .MuiTableCell-root': { fontSize: "0.82rem !important" },
+                                    '& .MuiTableCell-root': { fontSize: `${tableFontSize}px !important` },
                                     // Branded header band (nav indigo + light text; readable in light & dark).
                                     '& .MuiTableHead-root .MuiTableCell-root': {
-                                        fontSize: "0.82rem !important", fontWeight: "bold !important",
+                                        fontSize: `${tableFontSize}px !important`, fontWeight: "bold !important",
                                         backgroundColor: 'custom.nav', color: 'custom.navText',
                                     },
                                     '& .MuiTableHead-root .MuiTableSortLabel-root, & .MuiTableHead-root .MuiTableSortLabel-root:hover, & .MuiTableHead-root .MuiTableSortLabel-root.Mui-active': { color: 'custom.navText' },
                                     '& .MuiTableHead-root .MuiTableSortLabel-icon': { color: 'custom.navText !important' },
                                     '& .MuiTableHead-root .MuiIconButton-root': { color: 'custom.navText' },
-                                    '& .MuiTableSortLabel-root': { fontSize: "0.82rem !important" },
+                                    '& .MuiTableSortLabel-root': { fontSize: `${tableFontSize}px !important` },
                                 }}
                             >
                                 <TableHead>
@@ -841,7 +918,7 @@ const IndividualLotClickedTable = () => {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {pieFilteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
+                                    {searchedData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
                                         <TableRow key={index}  
                                         style={{ cursor: 'pointer' }}
                                         onClick={() => {
@@ -906,7 +983,7 @@ const IndividualLotClickedTable = () => {
                                     {/* Keep the header (and its filter-popover anchors) mounted when a
                                         column filter narrows the result to zero rows — otherwise the
                                         popover loses its anchor and jumps to the top-left corner. */}
-                                    {pieFilteredData.length === 0 && (
+                                    {searchedData.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={columns.length} align="center" sx={{ py: 3, color: 'text.secondary' }}>
                                                 No matching results.
@@ -919,7 +996,7 @@ const IndividualLotClickedTable = () => {
                         <TablePagination
                             rowsPerPageOptions={[100, 500, 1000]}
                             component="div"
-                            count={finalFilteredData.length}
+                            count={searchedData.length}
                             rowsPerPage={rowsPerPage}
                             page={page}
                             onPageChange={handleChangePage}
