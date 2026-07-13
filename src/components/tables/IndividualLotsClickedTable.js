@@ -739,7 +739,7 @@ const IndividualLotClickedTable = () => {
                     <Typography variant="h6" sx={{ mb: 0 }}>
                         {
                             periodType === 'month'
-                                ? `MeasDate: ${formatMonthYear(date?.substring(0, 7)) || 'No date provided'}`
+                                ? `Period: ${formatMonthYear(date?.substring(0, 7)) || 'No date provided'}`
                                 : periodType === 'date'
                                     ? `MeasDate: ${formatMonthDate(date) || 'No date provided'}`
                                     : 'No period info'
@@ -770,17 +770,13 @@ const IndividualLotClickedTable = () => {
                         filename={`${seriesId.slice(0, 2) === 'nc' ? 'Cpk＜1' : 'Cpk≥1'} Individual Lot Measurement Table_${periodType === 'date' ? formatDayMonthYear(date) : formatMonthYear(date?.substring(0, 7))}.csv`}
                         generalInfo={[
                             { label: 'Report', value: 'Individual Lot Measurement Table' },
-                            // Show the measurement date the same way the table rows do
-                            // ("Mar 03, 2026"), sourced from the data so it stays consistent
-                            // with the rows below. asText keeps it left-aligned and stops
-                            // Excel collapsing it to a serial date ("Oct-25").
-                            {
-                                label: 'MeasDate',
-                                value: pieFilteredData[0]?.MeasDate
-                                    ? formatMeasDate(pieFilteredData[0].MeasDate)
-                                    : (periodType === 'date' ? formatMonthDate(date) : formatMonthYear(date?.substring(0, 7))),
-                                asText: true,
-                            },
+                            // Drill-in from the monthly column chart spans a whole month
+                            // (multiple days) → Period; from the daily line chart it's a single
+                            // day → MeasDate (sourced from the row data). asText keeps it
+                            // left-aligned and stops Excel collapsing it to a serial date.
+                            periodType === 'month'
+                                ? { label: 'Period', value: formatMonthYear(date?.substring(0, 7)), asText: true }
+                                : { label: 'MeasDate', value: pieFilteredData[0]?.MeasDate ? formatMeasDate(pieFilteredData[0].MeasDate) : formatMonthDate(date), asText: true },
                             { label: 'Dept', value: pieFilteredData[0]?.Dept || '' },
                         ]}
                         sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
