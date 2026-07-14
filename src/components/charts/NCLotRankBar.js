@@ -132,6 +132,8 @@ const NCLotRankBar = () => {
             MaterialDesc: '',
             DimensionDesc: '',
             CAT: ['CTQ', 'CTP', 'NOR'],
+            CarburizingFurnace: '',
+            TemperingFurnace: '',
             StartMonth: '',
             EndMonth: '',
         };
@@ -157,6 +159,8 @@ const NCLotRankBar = () => {
             MaterialDesc: '',
             DimensionDesc: '',
             CAT: [],
+            CarburizingFurnace: '',
+            TemperingFurnace: '',
             StartMonth: '',
             EndMonth: '',
         };
@@ -220,11 +224,34 @@ useEffect(() => {
     return allMonthsCombined.filter(m => m >= filters.StartMonth);
   }, [allMonthsCombined, filters.StartMonth]);
 
+  // Carburizing (TVC) / Tempering (TAT) furnace filter options — derived from the
+  // furnace ranking data already fetched for this Dept=HT view (not furnace-filtered,
+  // so the full option list is preserved regardless of the current selection).
+  const carburizingFurnaceOptions = useMemo(
+    () => Array.from(new Set((tvcNCData || []).map(d => d.TVC).filter(Boolean))).sort(),
+    [tvcNCData]
+  );
+  const temperingFurnaceOptions = useMemo(
+    () => Array.from(new Set((tatNCData || []).map(d => d.TAT).filter(Boolean))).sort(),
+    [tatNCData]
+  );
+
+  // Apply the furnace selections client-side. Real-API rows expose CarburizingFurnace
+  // / TemperingFurnace as comma-joined furnace lists; rows lacking the field (e.g. demo
+  // fixtures) pass through so the view isn't emptied when a furnace is selected.
+  const displayMaterialData = useMemo(() => {
+    const carb = filters.CarburizingFurnace;
+    const temp = filters.TemperingFurnace;
+    if (!carb && !temp) return materialNCData;
+    const matches = (val, sel) => val == null || String(val).split(',').map(s => s.trim()).includes(sel);
+    return materialNCData.filter(r => (!carb || matches(r.CarburizingFurnace, carb)) && (!temp || matches(r.TemperingFurnace, temp)));
+  }, [materialNCData, filters.CarburizingFurnace, filters.TemperingFurnace]);
+
   // Material summary: search filter + column sort applied before pagination.
   const processedMaterialData = useMemo(() => {
     const q = search.trim().toLowerCase();
-    // Table mirrors the chart's Top-N selection (materialNCData is rank-ordered).
-    let rows = materialNCData.slice(0, effectiveTopN);
+    // Table mirrors the chart's Top-N selection (displayMaterialData is rank-ordered).
+    let rows = displayMaterialData.slice(0, effectiveTopN);
     if (q) {
       rows = rows.filter(r => {
         const tvc = (r.CarburizingFurnace || '').toLowerCase();
@@ -243,7 +270,7 @@ useEffect(() => {
       return 0;
     });
     return sorted;
-  }, [materialNCData, effectiveTopN, search, order, orderBy]);
+  }, [displayMaterialData, effectiveTopN, search, order, orderBy]);
 
   const handleSort = (field) => {
     if (!field) return;
@@ -361,10 +388,10 @@ useEffect(() => {
     // Lot count (1–30, default 10). materialNCData is already filter-applied (API
     // query) and rank-ordered, so slicing honours the active filters.
     const chartMaterialData = useMemo(() => {
-        return materialNCData.slice(0, effectiveTopN);
-    }, [materialNCData, effectiveTopN]);
+        return displayMaterialData.slice(0, effectiveTopN);
+    }, [displayMaterialData, effectiveTopN]);
 
-    const materialPpkLessThanOneCountList = materialNCData.map(item => item.PPK_NC_Count);
+    const materialPpkLessThanOneCountList = displayMaterialData.map(item => item.PPK_NC_Count);
     const isMaterialAllZero = materialPpkLessThanOneCountList.length > 0 && materialPpkLessThanOneCountList.every(v => v === 0);
 
     return (
@@ -427,6 +454,50 @@ useEffect(() => {
                                 />
                             );
                         })}
+                <Autocomplete
+                    size="small"
+                    options={['', ...carburizingFurnaceOptions]}
+                    value={filters.CarburizingFurnace ?? ''}
+                    onChange={(e, value) => handleFilterChange('CarburizingFurnace', value ?? '')}
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            label="Carburizing Furnace"
+                            variant="outlined"
+                            sx={{ minWidth: 160, flex: '1 1 160px' }}
+                            placeholder="All"
+                            InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
+                        />
+                    )}
+                    getOptionLabel={(option) => option === '' ? '' : option}
+                    isOptionEqualToValue={(option, value) => option === value}
+                    ListboxProps={{ style: { maxHeight: 300 } }}
+                    renderOption={(props, option) => (
+                        <li {...props}>{option === '' ? 'All' : option}</li>
+                    )}
+                />
+                <Autocomplete
+                    size="small"
+                    options={['', ...temperingFurnaceOptions]}
+                    value={filters.TemperingFurnace ?? ''}
+                    onChange={(e, value) => handleFilterChange('TemperingFurnace', value ?? '')}
+                    renderInput={(params) => (
+                        <TextField
+                            {...params}
+                            label="Tempering Furnace"
+                            variant="outlined"
+                            sx={{ minWidth: 160, flex: '1 1 160px' }}
+                            placeholder="All"
+                            InputLabelProps={{ sx: { '&.MuiInputLabel-shrink': { bgcolor: 'background.paper', px: 0.5, borderRadius: 0.5 } } }}
+                        />
+                    )}
+                    getOptionLabel={(option) => option === '' ? '' : option}
+                    isOptionEqualToValue={(option, value) => option === value}
+                    ListboxProps={{ style: { maxHeight: 300 } }}
+                    renderOption={(props, option) => (
+                        <li {...props}>{option === '' ? 'All' : option}</li>
+                    )}
+                />
                 <Autocomplete
                     size="small"
                     options={startMonthOptions}
@@ -563,6 +634,7 @@ useEffect(() => {
                                     <BarChart
                                         height={400}
                                         margin={{ left: 54, right: 20, top: 16, bottom: 120 }}
+                                        sx={{ '& .MuiBarLabel-root': { fill: '#000', fontWeight: 700 } }}
                                         xAxis={[{
                                             data: chartMaterialData.map(r => (r.MaterialDesc || '').split(' ').join('\n')),
                                             scaleType: 'band',

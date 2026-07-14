@@ -366,10 +366,11 @@ const OverallLotsClickedTable = () => {
             color: colors[label],
         }));
 
-        const currentFilter = allFilters[pieKey];
-        if (currentFilter && currentFilter.length > 0) {
-            return pieData.filter(d => currentFilter.includes(d.label));
-        }
+        // Always return every label for this dimension (already narrowed by the
+        // OTHER dimensions' selections via crossFilters). We intentionally do NOT
+        // filter down to this dimension's own selection, so the pie and legend keep
+        // showing all options and the user can multi-select instead of the list
+        // collapsing to the single clicked value.
         return pieData;
     }, [applyFilters]);
 
@@ -476,7 +477,11 @@ const OverallLotsClickedTable = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'flex-start', height: 'auto' }}>
                                     <PieChart
                                         series={[{
-                                            data: carbPieData.length ? carbPieData : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)' }],
+                                            data: (() => {
+                                                const sel = filterValues.BatchMC2 || [];
+                                                const shown = sel.length ? carbPieData.filter(d => sel.includes(d.label)) : carbPieData;
+                                                return shown.length ? shown : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)' }];
+                                            })(),
                                             highlightScope: { faded: 'global', highlighted: 'item' },
                                             cornerRadius: 6,
                                             paddingAngle: 2,
@@ -497,40 +502,9 @@ const OverallLotsClickedTable = () => {
                                     alignItems: 'flex-start',
                                     justifyContent: 'flex-start',
                                 }}>
-                                    {(filterValues.BatchMC2 && filterValues.BatchMC2.length > 0) ? (
-                                        // One chip per selected furnace (multi-select) so the legend
-                                        // matches every slice in the pie, not just the first value.
-                                        filterValues.BatchMC2.map((sel) => {
-                                            const slice = carbPieData.find(item => item.label === sel);
-                                            const sliceColor = slice?.color || '#90caf9';
-                                            return (
-                                        <Box
-                                            key={sel}
-                                            sx={{
-                                                cursor: 'pointer',
-                                                px: 1,
-                                                py: 1,
-                                                borderRadius: 1,
-                                                background: sliceColor,
-                                                color: '#222',
-                                                fontWeight: 700,
-                                                border: `1px solid ${sliceColor}`,
-                                                mb: 1,
-                                                minWidth: 0,
-                                                fontSize: 13,
-                                                whiteSpace: 'nowrap',
-                                                '&:hover': {
-                                                    opacity: 0.8
-                                                },
-                                            }}
-                                            onClick={() => handlePieClick('BatchMC2', sel)}
-                                        >
-                                            {sel} ({slice?.value || 0})
-                                        </Box>
-                                            );
-                                        })
-                                    ) : (
-                                        carbPieData.map((item) => (
+                                    {carbPieData.map((item) => {
+                                        const selected = (filterValues.BatchMC2 || []).includes(item.label);
+                                        return (
                                             <Box
                                                 key={item.label}
                                                 sx={{
@@ -538,9 +512,9 @@ const OverallLotsClickedTable = () => {
                                                     px: 1,
                                                     py: 1,
                                                     borderRadius: 1,
-                                                    background: undefined,
-                                                    color: item.color,
-                                                    fontWeight: 500,
+                                                    background: selected ? item.color : undefined,
+                                                    color: selected ? '#222' : item.color,
+                                                    fontWeight: selected ? 700 : 500,
                                                     border: `1px solid ${item.color}`,
                                                     mb: 1,
                                                     minWidth: 0,
@@ -555,8 +529,8 @@ const OverallLotsClickedTable = () => {
                                             >
                                                 {item.label} ({item.value})
                                             </Box>
-                                        ))
-                                    )}
+                                        );
+                                    })}
                                 </Box>
                             </Box>
                         </Box>
@@ -569,7 +543,11 @@ const OverallLotsClickedTable = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'flex-start', height: 'auto' }}>
                                     <PieChart
                                         series={[{
-                                            data: tempPieData.length ? tempPieData : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)' }],
+                                            data: (() => {
+                                                const sel = filterValues.BatchMC4 || [];
+                                                const shown = sel.length ? tempPieData.filter(d => sel.includes(d.label)) : tempPieData;
+                                                return shown.length ? shown : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)' }];
+                                            })(),
                                             highlightScope: { faded: 'global', highlighted: 'item' },
                                             cornerRadius: 6,
                                             paddingAngle: 2,
@@ -590,40 +568,9 @@ const OverallLotsClickedTable = () => {
                                     alignItems: 'flex-start',
                                     justifyContent: 'flex-start',
                                 }}>
-                                    {(filterValues.BatchMC4 && filterValues.BatchMC4.length > 0) ? (
-                                        // One chip per selected furnace (multi-select) so the legend
-                                        // matches every slice in the pie, not just the first value.
-                                        filterValues.BatchMC4.map((sel) => {
-                                            const slice = tempPieData.find(item => item.label === sel);
-                                            const sliceColor = slice?.color || '#a5d6a7';
-                                            return (
-                                        <Box
-                                            key={sel}
-                                            sx={{
-                                                cursor: 'pointer',
-                                                px: 1,
-                                                py: 1,
-                                                borderRadius: 1,
-                                                background: sliceColor,
-                                                color: '#222',
-                                                fontWeight: 700,
-                                                border: `1px solid ${sliceColor}`,
-                                                mb: 1,
-                                                minWidth: 0,
-                                                fontSize: 13,
-                                                whiteSpace: 'nowrap',
-                                                '&:hover': {
-                                                    opacity: 0.8
-                                                },
-                                            }}
-                                            onClick={() => handlePieClick('BatchMC4', sel)}
-                                        >
-                                            {sel} ({slice?.value || 0})
-                                        </Box>
-                                            );
-                                        })
-                                    ) : (
-                                        tempPieData.map((item) => (
+                                    {tempPieData.map((item) => {
+                                        const selected = (filterValues.BatchMC4 || []).includes(item.label);
+                                        return (
                                             <Box
                                                 key={item.label}
                                                 sx={{
@@ -631,9 +578,9 @@ const OverallLotsClickedTable = () => {
                                                     px: 1,
                                                     py: 1,
                                                     borderRadius: 1,
-                                                    background: undefined,
-                                                    color: item.color,
-                                                    fontWeight: 500,
+                                                    background: selected ? item.color : undefined,
+                                                    color: selected ? '#222' : item.color,
+                                                    fontWeight: selected ? 700 : 500,
                                                     border: `1px solid ${item.color}`,
                                                     mb: 1,
                                                     minWidth: 0,
@@ -648,8 +595,8 @@ const OverallLotsClickedTable = () => {
                                             >
                                                 {item.label} ({item.value})
                                             </Box>
-                                        ))
-                                    )}
+                                        );
+                                    })}
                                 </Box>
                             </Box>
                         </Box>
@@ -662,7 +609,11 @@ const OverallLotsClickedTable = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'flex-start', height: 'auto' }}>
                                     <PieChart
                                         series={[{
-                                            data: materialPieData.length ? materialPieData : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)' }],
+                                            data: (() => {
+                                                const sel = filterValues.MaterialDesc || [];
+                                                const shown = sel.length ? materialPieData.filter(d => sel.includes(d.label)) : materialPieData;
+                                                return shown.length ? shown : [{ label: 'No Data', value: 1, color: 'rgba(148,163,184,0.18)' }];
+                                            })(),
                                             arcLabelMinAngle: 0,
                                             highlightScope: { faded: 'global', highlighted: 'item' },
                                             cornerRadius: 6,
@@ -684,40 +635,9 @@ const OverallLotsClickedTable = () => {
                                     alignItems: 'flex-start',
                                     justifyContent: 'flex-start',
                                 }}>
-                                    {(filterValues.MaterialDesc && filterValues.MaterialDesc.length > 0) ? (
-                                        // One chip per selected material group (multi-select) so the
-                                        // legend matches every slice in the pie, not just the first.
-                                        filterValues.MaterialDesc.map((sel) => {
-                                            const slice = materialPieData.find(item => item.label === sel);
-                                            const sliceColor = slice?.color || '#ffd54f';
-                                            return (
-                                        <Box
-                                            key={sel}
-                                            sx={{
-                                                cursor: 'pointer',
-                                                px: 2,
-                                                py: 1,
-                                                borderRadius: 1,
-                                                background: sliceColor,
-                                                color: '#222',
-                                                fontWeight: 700,
-                                                border: `1px solid ${sliceColor}`,
-                                                mb: 1,
-                                                minWidth: 0,
-                                                fontSize: 13,
-                                                whiteSpace: 'nowrap',
-                                                '&:hover': {
-                                                    opacity: 0.8
-                                                },
-                                            }}
-                                            onClick={() => handlePieClick('MaterialDesc', sel)}
-                                        >
-                                            {sel} ({slice?.value || 0})
-                                        </Box>
-                                            );
-                                        })
-                                    ) : (
-                                        materialPieData.map((item) => (
+                                    {materialPieData.map((item) => {
+                                        const selected = (filterValues.MaterialDesc || []).includes(item.label);
+                                        return (
                                             <Box
                                                 key={item.label}
                                                 sx={{
@@ -725,9 +645,9 @@ const OverallLotsClickedTable = () => {
                                                     px: 2,
                                                     py: 1,
                                                     borderRadius: 1,
-                                                    background: undefined,
-                                                    color: item.color,
-                                                    fontWeight: 500,
+                                                    background: selected ? item.color : undefined,
+                                                    color: selected ? '#222' : item.color,
+                                                    fontWeight: selected ? 700 : 500,
                                                     border: `1px solid ${item.color}`,
                                                     mb: 1,
                                                     minWidth: 0,
@@ -742,8 +662,8 @@ const OverallLotsClickedTable = () => {
                                             >
                                                 {item.label} ({item.value})
                                             </Box>
-                                        ))
-                                    )}
+                                        );
+                                    })}
                                 </Box>
                             </Box>
                         </Box>
