@@ -1041,7 +1041,7 @@ const SubsampleScatterDistribution = () => {
         flexDirection: 'column',
         alignItems: 'stretch'
       }}>
-        <Box sx={{ width: '100%', border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: { xs: 1.5, md: 2.5 }, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, alignItems: 'stretch' }}>
+        <Box sx={{ width: '100%', flexGrow: 1, border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: { xs: 1.5, md: 2.5 }, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, alignItems: 'stretch' }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
           <PlotlyComponent
             data={[
@@ -1311,7 +1311,7 @@ const SubsampleScatterDistribution = () => {
             <LocalFireDepartmentIcon sx={{ color: 'warning.main' }} />
             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Furnace Data (Summary)</Typography>
           </Stack>
-          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
+          <Box sx={{ width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly', alignItems: 'center' }}>
             {/* MC2 Pie (Carburizing) */}
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
               <Typography variant="subtitle1" textAlign="center" sx={{ mb: 1, fontWeight: 600 }}>Carburizing Furnace (TVC)</Typography>
@@ -1432,8 +1432,7 @@ const SubsampleScatterDistribution = () => {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'stretch',
-        height: '100%'
+        alignItems: 'stretch'
       }}>
         {/* 导出按钮放在右侧表格正上方 */}
         {/* <CsvExportButton
@@ -1496,7 +1495,7 @@ const SubsampleScatterDistribution = () => {
             </Grid>
           )}
         </Box>
-        <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: 2.5, mb: 3 }}>
+        <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'background.paper', p: 2.5, mb: 0, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
             <QueryStatsIcon sx={{ color: 'primary.main' }} />
             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Statistics</Typography>
