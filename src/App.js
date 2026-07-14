@@ -170,9 +170,14 @@ const AppInner = () => {
                   color: 'text.secondary',
                 }}
               >
-                <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                  Data Refresh Time: {updateTime}
-                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'center', sm: 'baseline' }, gap: { xs: 0.25, sm: 1.5 } }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                    PCM version 1.2
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                    Data Refresh Time: {updateTime}
+                  </Typography>
+                </Box>
                 <Typography variant="caption" sx={{ opacity: 0.85 }}>
                   © 2025 Process Capability Metrics Dashboard · Developed by SPL-PID [ SPC ] Department
                 </Typography>

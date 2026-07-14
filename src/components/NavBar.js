@@ -90,12 +90,12 @@ const NavBar = () => {
       {/* Tier 1 — App header (brand + utilities) */}
       <AppBar position="static" elevation={0} sx={{ background: custom.nav, color: custom.navText }}>
         <Container disableGutters maxWidth={false}>
-          <Toolbar disableGutters variant="dense" sx={{ pl: 1.5, pr: 1.5, minHeight: 50, gap: 1 }}>
+          <Toolbar disableGutters variant="dense" sx={{ pl: 1.5, pr: 1.5, minHeight: 60, gap: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
               <Box
                 aria-label="Shimano"
                 sx={{
-                  height: 48, width: 116, flexShrink: 0,
+                  height: 58, width: 140, flexShrink: 0,
                   backgroundImage: `url(${process.env.PUBLIC_URL || ''}/shimano-logo.png)`,
                   backgroundSize: 'contain',
                   backgroundPosition: 'center',
